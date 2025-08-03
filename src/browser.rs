@@ -19,6 +19,16 @@ pub struct RomFinder {
     path: PathBuf,
     items: Vec<Entry>,
     state: TableState,
+    editing: bool,
+    filter: String,
+}
+
+/// Helper method to verify if a given directory
+/// is associated with at least one entry
+fn dir_has_entry(path: &Path) -> io::Result<bool> {
+    let mut entries = fs::read_dir(path)?;
+
+    Ok(entries.next().is_some())
 }
 
 impl RomFinder {
@@ -35,6 +45,8 @@ impl RomFinder {
             path,
             items: vec![],
             state: TableState::default(),
+            editing: false,
+            filter: String::new(),
         };
 
         let _ = finder.update_data();
@@ -77,8 +89,19 @@ impl RomFinder {
             let path = entry.path();
             if let Some(os_name) = path.file_name() {
                 let name = os_name.to_string_lossy().into_owned();
-                let is_dir = path.is_dir();
-                self.items.push(Entry { name, path, is_dir })
+
+                if (self.editing && name.starts_with(&self.filter)) || !self.editing {
+                    let is_dir = path.is_dir();
+                    if is_dir {
+                        if let Ok(entries) = dir_has_entry(&path) {
+                            if entries {
+                                self.items.push(Entry { name, path, is_dir });
+                            }
+                        }
+                    } else {
+                        self.items.push(Entry { name, path, is_dir })
+                    }
+                }
             }
         }
         self.state.select(Some(0));
@@ -90,13 +113,19 @@ impl RomFinder {
             if let Some(entry) = self.items.get(selected_index) {
                 if entry.is_dir {
                     self.path = self.path.join(&entry.name);
+                    self.filter.clear();
+                    self.editing = false;
                     let _ = self.update_data();
+                    Action::Render
                 } else {
-                    return Action::LoadRom(self.path.join(entry.name.clone()));
+                    Action::LoadRom(self.path.join(entry.name.clone()))
                 }
+            } else {
+                Action::Nope
             }
+        } else {
+            Action::Nope
         }
-        Action::Nope
     }
 
     /// Handle the left key event.
@@ -114,19 +143,45 @@ impl RomFinder {
     }
 
     pub fn handle_key_event(&mut self, evt: KeyEvent) -> Action {
-        match evt.code {
-            KeyCode::Char('w') | KeyCode::Char('k') | KeyCode::Up => {
-                self.previous();
-                Action::Render
+        if self.editing {
+            match evt.code {
+                KeyCode::Char(c) => {
+                    self.filter.push(c);
+                    let _ = self.update_data();
+                    Action::Render
+                }
+                KeyCode::Esc => {
+                    self.filter.clear();
+                    self.editing = false;
+                    let _ = self.update_data();
+                    Action::Render
+                }
+                KeyCode::Backspace => {
+                    self.filter.pop();
+                    Action::Render
+                }
+                KeyCode::Enter | KeyCode::Right => self.handle_enter_key(),
+                _ => Action::Nope,
             }
-            KeyCode::Char('s') | KeyCode::Char('j') | KeyCode::Down => {
-                self.next();
-                Action::Render
+        } else {
+            match evt.code {
+                KeyCode::Char('w') | KeyCode::Char('k') | KeyCode::Up => {
+                    self.previous();
+                    Action::Render
+                }
+                KeyCode::Char('s') | KeyCode::Char('j') | KeyCode::Down => {
+                    self.next();
+                    Action::Render
+                }
+                KeyCode::Enter | KeyCode::Right => self.handle_enter_key(),
+                KeyCode::Left => self.handle_back_key(),
+                KeyCode::Esc => Action::GoToMenu,
+                KeyCode::Char('/') => {
+                    self.editing = true;
+                    Action::Render
+                }
+                _ => Action::Nope,
             }
-            KeyCode::Enter | KeyCode::Right => self.handle_enter_key(),
-            KeyCode::Left => self.handle_back_key(),
-            KeyCode::Esc => Action::GoToMenu,
-            _ => Action::Nope,
         }
     }
 
@@ -167,6 +222,17 @@ impl RomFinder {
                 .highlight_symbol(">> ");
 
             f.render_stateful_widget(table, browser_chunks[1], &mut self.state);
+
+            let mut filter_paragraph = Paragraph::new(format!("Filter: {}", self.filter))
+                .alignment(Alignment::Left)
+                .block(Block::default());
+
+            if self.editing {
+                filter_paragraph =
+                    filter_paragraph.style(Style::default().fg(Color::Black).bg(Color::White));
+            }
+
+            f.render_widget(filter_paragraph, browser_chunks[2]);
         });
     }
 }
