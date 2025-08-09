@@ -6,6 +6,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::CrosstermBackend,
     style::{Color, Modifier, Style},
+    text::Line,
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 use serde::{Deserialize, Serialize};
@@ -154,7 +155,7 @@ impl EmulatorSettings {
         }
     }
 
-    pub fn render(&mut self, f: &mut Frame, area: Rect) {
+    pub fn render(&mut self, f: &mut Frame, area: Rect, active: bool) {
         let items: Vec<ListItem> = self
             .items
             .iter()
@@ -176,12 +177,17 @@ impl EmulatorSettings {
             )
             .highlight_style(
                 Style::default()
-                    .bg(Color::Blue)
+                    .fg(Color::White)
+                    .bg(Color::Black)
                     .add_modifier(Modifier::BOLD),
             )
             .highlight_symbol(">> ");
 
-        f.render_stateful_widget(widget, area, &mut self.state);
+        if active {
+            f.render_stateful_widget(widget, area, &mut self.state);
+        } else {
+            f.render_widget(widget, area);
+        }
     }
 
     fn to_data(&self) -> EmulatorSettingsData {
@@ -309,7 +315,7 @@ impl KeyboardMap {
         }
     }
 
-    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+    pub fn render(&mut self, frame: &mut Frame, area: Rect, active: bool) {
         let items: Vec<ListItem> = self
             .keyboard
             .iter()
@@ -321,7 +327,7 @@ impl KeyboardMap {
             })
             .collect();
 
-        let widget = List::new(items)
+        let mut widget = List::new(items)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
@@ -329,12 +335,20 @@ impl KeyboardMap {
             )
             .highlight_style(
                 Style::default()
-                    .bg(Color::Blue)
+                    .fg(Color::White)
+                    .bg(Color::Black)
                     .add_modifier(Modifier::BOLD),
             )
             .highlight_symbol(">> ");
 
-        frame.render_stateful_widget(widget, area, &mut self.state);
+        if self.editing_index.is_some() {
+            widget = widget.highlight_style(Style::default().fg(Color::Black).bg(Color::White));
+        }
+        if active {
+            frame.render_stateful_widget(widget, area, &mut self.state);
+        } else {
+            frame.render_widget(widget, area);
+        }
     }
 
     fn to_data(&self) -> KeyboardMapData {
@@ -350,6 +364,7 @@ impl KeyboardMap {
 
 pub struct Settings {
     active_column: u8,
+    number_of_columns: u8,
     emu_settings: EmulatorSettings,
     keyboard: KeyboardMap,
 }
@@ -368,13 +383,12 @@ impl Settings {
             active_column: 0,
             emu_settings,
             keyboard,
+            number_of_columns: 2,
         }
     }
 
     fn next_column(&mut self) {
-        if self.active_column < 1 {
-            self.active_column += 1;
-        }
+        self.active_column = (self.active_column + 1) % self.number_of_columns;
     }
 
     pub fn get_frequency(&self) -> u16 {
@@ -407,31 +421,60 @@ impl Settings {
 
     pub fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
         let _ = terminal.draw(|f| {
-            let vertical_chunks = Layout::default()
+            let main_chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(
                     [
                         Constraint::Ratio(1, 5),
-                        Constraint::Ratio(1, 5),
                         Constraint::Ratio(3, 5),
+                        Constraint::Ratio(1, 5),
                     ]
                     .as_ref(),
                 )
                 .split(f.area());
+            let title_area = main_chunks[0];
+            let content_area = main_chunks[1];
+            let footer_area = main_chunks[2];
 
+            // Split the content area into two horizontal chunks
+            // for the emulator settings and keyboard map
             let horizontal_chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
-                .split(vertical_chunks[2]);
+                .split(content_area);
 
-            // Title
+            // Title section
             let title_paragraph = Paragraph::new(TITLE)
                 .alignment(Alignment::Center)
                 .block(Block::default());
-            f.render_widget(title_paragraph, vertical_chunks[0]);
+            f.render_widget(title_paragraph, title_area);
 
-            self.emu_settings.render(f, horizontal_chunks[0]);
-            self.keyboard.render(f, horizontal_chunks[1]);
+            // Render of the two settings sections inside the content area
+            self.emu_settings
+                .render(f, horizontal_chunks[0], self.active_column == 0);
+            self.keyboard
+                .render(f, horizontal_chunks[1], self.active_column == 1);
+
+            // Footer section
+            let help_line: Line = if self.keyboard.editing_index.is_some() {
+                Line::from("Press a key to map | [ESC] to cancel ").alignment(Alignment::Center)
+            } else {
+                let mut line = match self.active_column {
+                    0 => Line::from("[←→] Change value").alignment(Alignment::Center),
+                    1 => Line::from("[↑↓] Navigate | [Enter] Edit").alignment(Alignment::Center),
+                    _ => Line::default(),
+                };
+
+                let common_line = Line::from(" | [TAB] Switch panel | [ESC] Save & exit")
+                    .alignment(Alignment::Center);
+
+                line.extend(common_line);
+
+                line
+            };
+
+            let help_paragraph = Paragraph::new(help_line);
+            f.render_widget(help_paragraph, footer_area);
         });
     }
 
