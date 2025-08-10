@@ -10,7 +10,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, string, thread::sleep, time::Duration, vec};
+use std::{collections::HashMap, fs, vec};
 
 const CHIP8_KEYS: [u8; 16] = [
     0x1, 0x2, 0x3, 0xC, 0x4, 0x5, 0x6, 0xD, 0x7, 0x8, 0x9, 0xE, 0xA, 0x0, 0xB, 0xF,
