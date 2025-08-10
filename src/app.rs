@@ -74,6 +74,9 @@ impl App {
                 std::thread::sleep(target_frame_duration - elapsed);
             }
         }
+
+        self.finder.save();
+
         Ok(())
     }
 
@@ -137,7 +140,8 @@ impl App {
         match action {
             Action::GoToSetting => self.switch_mode(Mode::Settings, terminal),
             Action::LoadRom(path) => {
-                if self.emu.load_rom(path) {
+                if self.emu.load_rom(&path) {
+                    self.finder.register_rom(path);
                     self.switch_mode(Mode::Game, terminal);
                 }
             }

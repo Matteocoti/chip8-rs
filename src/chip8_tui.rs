@@ -37,7 +37,7 @@ impl Chip8TUI {
         action
     }
 
-    pub fn load_rom(&mut self, rom_path: PathBuf) -> bool {
+    pub fn load_rom(&mut self, rom_path: &PathBuf) -> bool {
         let rom_rd_res = std::fs::read(rom_path);
         if let Ok(rom_data) = rom_rd_res {
             if self.core.load_rom(rom_data) {
@@ -64,6 +64,7 @@ impl Chip8TUI {
                     self.core.press_key(*chip8_key);
                 }
             }
+            KeyCode::Esc => return Action::GoToMenu,
             _ => (),
         }
         Action::Nope
