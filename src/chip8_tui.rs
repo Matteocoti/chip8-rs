@@ -26,7 +26,7 @@ impl Chip8TUI {
     }
 
     pub fn update(&mut self) -> Action {
-        let emu_result = self.core.emulate_cycle(self.freq);
+        let emu_result = self.core.tick();
         self.core.reset_keyboard();
         let mut action = Action::Nope;
         if let Ok(update) = emu_result {

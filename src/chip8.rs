@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt;
 use std::mem;
+use std::time::{Duration, Instant};
 
 // Fontset declaration -> group of sprites stored
 // inside the chip8 memory
@@ -11,6 +12,9 @@ const FONT_SET: [u8; 80] = [
     0x10, 0xF0, 0xF0, 0x90, 0xF0, 0x90, 0x90, 0xE0, 0x90, 0xE0, 0x90, 0xE0, 0xF0, 0x80, 0x80, 0x80,
     0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80,
 ];
+
+// Timer interval for the emulation loop, set to 60 FPS.
+const TIMER_INTERVAL: std::time::Duration = std::time::Duration::from_nanos(1_000_000_000 / 60);
 
 // Custom error type for emulation errors.
 #[derive(Debug)]
@@ -128,6 +132,8 @@ pub struct Chip8 {
     register_for_key: usize,  // Register to which store the pressed key
     opcode: u16,              // Current opcode
     frequency: u16,           // Frequency of the emulation cycle
+    time: Duration,           // Time since last timer update
+    last_tick_time: Instant,  // Last tick time
 }
 
 impl Chip8 {
@@ -147,6 +153,8 @@ impl Chip8 {
             register_for_key: 0,
             opcode: 0,
             frequency: 500, // Frequency of the emulation cycle
+            time: Duration::ZERO,
+            last_tick_time: Instant::now(),
         };
 
         // Load fontset into memory
@@ -480,38 +488,62 @@ impl Chip8 {
         self.register_for_key = 0
     }
 
-    pub fn emulate_cycle(&mut self, frequency: u16) -> Result<bool, EmulationError> {
-        let frequency_scale = self.frequency / frequency;
-
-        // TODO: adjust timer decreasing based on frequency
-        if self.delay_tmr > 0 {
-            self.delay_tmr -= 1;
-        }
-        if self.sound_tmr > 0 {
-            self.sound_tmr -= 1;
-        }
-
+    fn emulate_cycle(&mut self) -> Result<bool, EmulationError> {
         let mut screen_update = false;
-        for cycle in 0..frequency_scale {
-            // If the emulator is waiting for a key, the execution is stopped
-            if self.waiting_for_key {
-                if let Some(key) = self.get_key_pressed() {
-                    self.v[self.register_for_key] = key as u8;
-                    self.reset_keyboard();
-                    self.pc += 2;
-                    return Ok(false);
-                } else {
-                    return Ok(false);
-                }
+        // If the emulator is waiting for a key, the execution is stopped
+        if self.waiting_for_key {
+            if let Some(key) = self.get_key_pressed() {
+                self.v[self.register_for_key] = key as u8;
+                self.reset_keyboard();
+                self.pc += 2;
+                return Ok(false);
+            } else {
+                return Ok(false);
             }
+        }
 
-            // Fetch next instruction
-            self.opcode = self.fetch();
-            // Decode the instruction
-            let opcode = self.decode(self.opcode);
-            // Execution of the instruction
-            if let Ok(update) = self.execute(opcode) {
+        // Fetch next instruction
+        self.opcode = self.fetch();
+        // Decode the instruction
+        let opcode = self.decode(self.opcode);
+        // Execution of the instruction
+        if let Ok(update) = self.execute(opcode) {
+            screen_update |= update;
+        }
+        Ok(screen_update)
+    }
+
+    fn update_timers(&mut self, delta: std::time::Duration) {
+        self.time += delta;
+
+        while self.time >= TIMER_INTERVAL {
+            // Decrease the delay timer
+            if self.delay_tmr > 0 {
+                self.delay_tmr -= 1;
+            }
+            // Decrease the sound timer
+            if self.sound_tmr > 0 {
+                self.sound_tmr -= 1;
+            }
+            self.time -= TIMER_INTERVAL;
+        }
+    }
+
+    pub fn tick(&mut self) -> Result<bool, EmulationError> {
+        let now = Instant::now();
+        let delta = now.duration_since(self.last_tick_time);
+        self.last_tick_time = now;
+        // Update timers
+        self.update_timers(delta);
+        // Emulate a cycle
+        let cycles_to_emulate = (self.frequency as f32 * delta.as_secs_f32()).round() as u32;
+        let mut screen_update = false;
+        for _ in 0..cycles_to_emulate {
+            // Emulate a cycle
+            if let Ok(update) = self.emulate_cycle() {
                 screen_update |= update;
+            } else {
+                return Err(EmulationError::UnknownOpcode(self.opcode));
             }
         }
         Ok(screen_update)
