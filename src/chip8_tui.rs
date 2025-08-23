@@ -1,4 +1,5 @@
-use crate::chip8::Chip8;
+use crate::audio::AudioHandler;
+use crate::chip8::{Chip8, EmulationEvent};
 use crate::{actions::Action, settings::Settings};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -14,14 +15,28 @@ pub struct Chip8TUI {
     core: Chip8,
     keymap: HashMap<char, u8>,
     freq: u16,
+    sound_hdrl: Option<AudioHandler>,
 }
 
 impl Chip8TUI {
     pub fn new() -> Self {
+        let sound_hdrl = AudioHandler::new();
         Self {
             core: Chip8::new(),
             keymap: HashMap::new(),
             freq: 60,
+            sound_hdrl,
+        }
+    }
+
+    fn play_sound(&mut self) {
+        if let Some(ref sound_hdrl) = self.sound_hdrl {
+            sound_hdrl.play();
+        }
+    }
+    fn stop_sound(&mut self) {
+        if let Some(ref sound_hdrl) = self.sound_hdrl {
+            sound_hdrl.pause();
         }
     }
 
@@ -29,9 +44,19 @@ impl Chip8TUI {
         let emu_result = self.core.tick();
         self.core.reset_keyboard();
         let mut action = Action::Nope;
-        if let Ok(update) = emu_result {
-            if update {
-                action = Action::Render;
+        if let Ok(events) = emu_result {
+            for evt in events {
+                match evt {
+                    EmulationEvent::ScreenUpdated => {
+                        action = Action::Render;
+                    }
+                    EmulationEvent::SoundStarted => {
+                        self.play_sound();
+                    }
+                    EmulationEvent::SoundStopped => {
+                        self.stop_sound();
+                    }
+                }
             }
         }
         action

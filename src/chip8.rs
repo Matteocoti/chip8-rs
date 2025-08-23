@@ -22,6 +22,14 @@ pub enum EmulationError {
     UnknownOpcode(u16),
 }
 
+// Custom event type for emulation events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EmulationEvent {
+    ScreenUpdated, // Screen needs to be updated
+    SoundStarted,  // Sound started playing
+    SoundStopped,  // Sound stopped playing
+}
+
 impl fmt::Display for EmulationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -285,10 +293,11 @@ impl Chip8 {
         }
     }
 
-    fn execute(&mut self, opcode: Opcode) -> Result<bool, EmulationError> {
+    fn execute(&mut self, opcode: Opcode) -> Result<Option<EmulationEvent>, EmulationError> {
         let mut display_update = false;
         let mut pc_inc: u16 = 2;
 
+        let mut event = None;
         match opcode {
             // Clear the display
             Opcode::ClearDisplay => {
@@ -444,7 +453,10 @@ impl Chip8 {
             // Set delay timer = Vx
             Opcode::SetDT(x) => self.delay_tmr = self.v[x],
             // Set sound timer = Vx
-            Opcode::SetST(x) => self.sound_tmr = self.v[x],
+            Opcode::SetST(x) => {
+                self.sound_tmr = self.v[x];
+                event = Some(EmulationEvent::SoundStarted);
+            }
             //  Set I = I + Vx
             Opcode::AddI(x) => self.i += self.v[x] as u16,
             // Set I = location of sprite for digit Vx
@@ -474,8 +486,11 @@ impl Chip8 {
         // Update of the program counter
         self.pc += pc_inc;
 
+        if display_update {
+            event = Some(EmulationEvent::ScreenUpdated);
+        }
         // Return if the display needs to be updated
-        Ok(display_update)
+        Ok(event)
     }
 
     fn get_key_pressed(&self) -> Option<usize> {
@@ -488,17 +503,16 @@ impl Chip8 {
         self.register_for_key = 0
     }
 
-    fn emulate_cycle(&mut self) -> Result<bool, EmulationError> {
-        let mut screen_update = false;
+    fn emulate_cycle(&mut self) -> Result<Option<EmulationEvent>, EmulationError> {
         // If the emulator is waiting for a key, the execution is stopped
         if self.waiting_for_key {
             if let Some(key) = self.get_key_pressed() {
                 self.v[self.register_for_key] = key as u8;
                 self.reset_keyboard();
                 self.pc += 2;
-                return Ok(false);
+                return Ok(None);
             } else {
-                return Ok(false);
+                return Ok(None);
             }
         }
 
@@ -507,19 +521,19 @@ impl Chip8 {
         // Decode the instruction
         let opcode = self.decode(self.opcode);
         // Execution of the instruction
-        if let Ok(update) = self.execute(opcode) {
-            screen_update |= update;
-        }
-        Ok(screen_update)
+        self.execute(opcode)
     }
 
-    fn update_timers(&mut self, delta: std::time::Duration) {
+    fn update_timers(&mut self, delta: std::time::Duration) -> Option<EmulationEvent> {
+        let mut evt = None;
         self.time += delta;
-
         while self.time >= TIMER_INTERVAL {
             // Decrease the delay timer
             if self.delay_tmr > 0 {
                 self.delay_tmr -= 1;
+            }
+            if self.sound_tmr == 1 {
+                evt = Some(EmulationEvent::SoundStopped);
             }
             // Decrease the sound timer
             if self.sound_tmr > 0 {
@@ -527,26 +541,36 @@ impl Chip8 {
             }
             self.time -= TIMER_INTERVAL;
         }
+
+        evt
     }
 
-    pub fn tick(&mut self) -> Result<bool, EmulationError> {
+    pub fn tick(&mut self) -> Result<Vec<EmulationEvent>, EmulationError> {
+        let mut vec_events = Vec::new();
         let now = Instant::now();
         let delta = now.duration_since(self.last_tick_time);
         self.last_tick_time = now;
+
         // Update timers
-        self.update_timers(delta);
+        if let Some(evt) = self.update_timers(delta) {
+            vec_events.push(evt);
+        }
         // Emulate a cycle
         let cycles_to_emulate = (self.frequency as f32 * delta.as_secs_f32()).round() as u32;
-        let mut screen_update = false;
         for _ in 0..cycles_to_emulate {
             // Emulate a cycle
-            if let Ok(update) = self.emulate_cycle() {
-                screen_update |= update;
+            if let Ok(cycle_evt) = self.emulate_cycle() {
+                if let Some(evt) = cycle_evt {
+                    if !vec_events.contains(&evt) {
+                        vec_events.push(evt);
+                    }
+                }
             } else {
                 return Err(EmulationError::UnknownOpcode(self.opcode));
             }
         }
-        Ok(screen_update)
+
+        Ok(vec_events)
     }
 
     pub fn get_frame_buffer(&self) -> &[bool] {
