@@ -14,7 +14,7 @@ use std::{collections::HashMap, path::PathBuf};
 pub struct Chip8TUI {
     core: Chip8,
     keymap: HashMap<char, u8>,
-    freq: u16,
+    max_delta_time: u16,
     sound_hdrl: Option<AudioHandler>,
 }
 
@@ -24,7 +24,7 @@ impl Chip8TUI {
         Self {
             core: Chip8::new(),
             keymap: HashMap::new(),
-            freq: 60,
+            max_delta_time: 30, // 30ms
             sound_hdrl,
         }
     }
@@ -42,7 +42,6 @@ impl Chip8TUI {
 
     pub fn update(&mut self) -> Action {
         let emu_result = self.core.tick();
-        self.core.reset_keyboard();
         let mut action = Action::Nope;
         if let Ok(events) = emu_result {
             for evt in events {
@@ -74,7 +73,9 @@ impl Chip8TUI {
 
     pub fn config(&mut self, settings: &Settings) {
         self.keymap.clear();
-        self.freq = settings.get_frequency();
+        self.max_delta_time = settings.get_max_delta_time();
+        self.core.set_frequency(settings.get_frequency());
+        self.core.set_max_delta_time(self.max_delta_time);
         let keymap = settings.get_key_mappings();
 
         for (chip8_key, key_char) in keymap.iter().enumerate() {
@@ -89,7 +90,10 @@ impl Chip8TUI {
                     self.core.press_key(*chip8_key);
                 }
             }
-            KeyCode::Esc => return Action::GoToMenu,
+            KeyCode::Esc => {
+                self.stop_sound();
+                return Action::GoToMenu;
+            }
             _ => (),
         }
         Action::Nope

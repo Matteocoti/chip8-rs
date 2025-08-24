@@ -18,7 +18,8 @@ const CHIP8_KEYS: [u8; 16] = [
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 enum EmuSettingItem {
-    Frequency(u16), // Frequency in Hz
+    MaxDeltaTime(u16), // MaxDeltaTime in Hz
+    Frequency(u16),    // Frequency in Hz
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -48,7 +49,10 @@ impl Default for EmulatorSettings {
         let mut state = ListState::default();
         state.select(Some(0));
         Self {
-            items: vec![EmuSettingItem::Frequency(60)], // Default frequency
+            items: vec![
+                EmuSettingItem::MaxDeltaTime(30),
+                EmuSettingItem::Frequency(500),
+            ],
             state,
             editing_index: None,
         }
@@ -74,10 +78,21 @@ impl From<EmulatorSettingsData> for EmulatorSettings {
 }
 
 impl EmulatorSettings {
+    pub fn get_max_delta_time(&self) -> u16 {
+        for item in self.items.iter() {
+            match item {
+                &EmuSettingItem::MaxDeltaTime(time) => return time,
+                _ => (),
+            };
+        }
+        panic!("EmulatorSettings must have a max delta time item");
+    }
+
     pub fn get_frequency(&self) -> u16 {
         for item in self.items.iter() {
             match item {
                 &EmuSettingItem::Frequency(freq) => return freq,
+                _ => (),
             };
         }
         panic!("EmulatorSettings must have a frequency item");
@@ -114,6 +129,11 @@ impl EmulatorSettings {
     fn dec_value(&mut self) {
         if let Some(selected_index) = self.state.selected() {
             match self.items[selected_index] {
+                EmuSettingItem::MaxDeltaTime(ref mut freq) => {
+                    if *freq > 1 {
+                        *freq -= 1; // Decrease frequency by 1 Hz
+                    }
+                }
                 EmuSettingItem::Frequency(ref mut freq) => {
                     if *freq > 1 {
                         *freq -= 1; // Decrease frequency by 1 Hz
@@ -126,6 +146,9 @@ impl EmulatorSettings {
     fn inc_value(&mut self) {
         if let Some(selected_index) = self.state.selected() {
             match self.items[selected_index] {
+                EmuSettingItem::MaxDeltaTime(ref mut freq) => {
+                    *freq += 1; // Increase frequency by 1 Hz
+                }
                 EmuSettingItem::Frequency(ref mut freq) => {
                     *freq += 1; // Increase frequency by 1 Hz
                 }
@@ -161,6 +184,9 @@ impl EmulatorSettings {
             .iter()
             .map(|item| {
                 let text = match item {
+                    EmuSettingItem::MaxDeltaTime(delta) => {
+                        format!("MaxDeltaTime: {} ms", delta)
+                    }
                     EmuSettingItem::Frequency(freq) => {
                         format!("Frequency: {} Hz", freq)
                     }
@@ -194,6 +220,9 @@ impl EmulatorSettings {
         let mut data = EmulatorSettingsData::default();
         for item in self.items.iter() {
             match item {
+                EmuSettingItem::MaxDeltaTime(freq) => {
+                    data.items.push(EmuSettingItem::MaxDeltaTime(*freq))
+                }
                 EmuSettingItem::Frequency(freq) => {
                     data.items.push(EmuSettingItem::Frequency(*freq))
                 }
@@ -389,6 +418,10 @@ impl Settings {
 
     fn next_column(&mut self) {
         self.active_column = (self.active_column + 1) % self.number_of_columns;
+    }
+
+    pub fn get_max_delta_time(&self) -> u16 {
+        self.emu_settings.get_max_delta_time()
     }
 
     pub fn get_frequency(&self) -> u16 {

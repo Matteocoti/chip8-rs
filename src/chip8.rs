@@ -142,6 +142,7 @@ pub struct Chip8 {
     frequency: u16,           // Frequency of the emulation cycle
     time: Duration,           // Time since last timer update
     last_tick_time: Instant,  // Last tick time
+    max_delta_time: u16,      // Maximum delta time for the emulation
 }
 
 impl Chip8 {
@@ -163,6 +164,7 @@ impl Chip8 {
             frequency: 500, // Frequency of the emulation cycle
             time: Duration::ZERO,
             last_tick_time: Instant::now(),
+            max_delta_time: 0,
         };
 
         // Load fontset into memory
@@ -454,8 +456,10 @@ impl Chip8 {
             Opcode::SetDT(x) => self.delay_tmr = self.v[x],
             // Set sound timer = Vx
             Opcode::SetST(x) => {
+                if (self.sound_tmr == 0) && (self.v[x] > 0) {
+                    event = Some(EmulationEvent::SoundStarted);
+                }
                 self.sound_tmr = self.v[x];
-                event = Some(EmulationEvent::SoundStarted);
             }
             //  Set I = I + Vx
             Opcode::AddI(x) => self.i += self.v[x] as u16,
@@ -545,10 +549,21 @@ impl Chip8 {
         evt
     }
 
+    pub fn set_max_delta_time(&mut self, max_delta_time: u16) {
+        self.max_delta_time = max_delta_time;
+    }
+
     pub fn tick(&mut self) -> Result<Vec<EmulationEvent>, EmulationError> {
         let mut vec_events = Vec::new();
         let now = Instant::now();
-        let delta = now.duration_since(self.last_tick_time);
+        let mut delta = now.duration_since(self.last_tick_time);
+        // Clamping delta time to a maximum value
+        if self.max_delta_time > 0 {
+            let max_delta = Duration::from_millis(self.max_delta_time as u64);
+            if delta > max_delta {
+                delta = max_delta;
+            }
+        }
         self.last_tick_time = now;
 
         // Update timers
@@ -570,6 +585,7 @@ impl Chip8 {
             }
         }
 
+        self.reset_keyboard();
         Ok(vec_events)
     }
 
@@ -591,6 +607,10 @@ impl Chip8 {
             pc: self.pc,
             sp: self.sp,
         }
+    }
+
+    pub fn set_frequency(&mut self, frequency: u16) {
+        self.frequency = frequency;
     }
 }
 
