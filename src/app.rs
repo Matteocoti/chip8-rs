@@ -59,23 +59,44 @@ impl App {
         let target_frame_duration = Duration::from_secs_f64(1.0 / 60.0);
 
         self.render(&mut terminal);
-        loop {
-            let start = std::time::Instant::now();
-            let mut action = self.handle_events();
-            self.handle_action(action, &mut terminal);
-            if self.should_quit {
-                let _ = restore_terminal();
-                break;
+
+        'main_loop: loop {
+            let frame_start = std::time::Instant::now();
+            while crossterm::event::poll(Duration::ZERO)? {
+                if let Ok(Event::Key(key_event)) = crossterm::event::read() {
+                    if let KeyEvent {
+                        code: KeyCode::Char('c'),
+                        modifiers: KeyModifiers::CONTROL,
+                        ..
+                    } = key_event
+                    {
+                        self.should_quit = true;
+                        break;
+                    }
+
+                    let action = match self.mode {
+                        Mode::Game => self.emu.handle_key_event(key_event),
+                        Mode::Settings => self.settings.handle_key_event(key_event),
+                        Mode::RomSelection => self.finder.handle_key_event(key_event),
+                        Mode::Menu => self.menu.handle_key_event(key_event),
+                    };
+                    self.handle_action(action, &mut terminal);
+                }
             }
-            action = self.update();
-            self.handle_action(action, &mut terminal);
-            let elapsed = start.elapsed();
+
+            if self.should_quit {
+                break 'main_loop;
+            }
+
+            let update_action = self.update();
+            self.handle_action(update_action, &mut terminal);
+
+            let elapsed = frame_start.elapsed();
             if elapsed < target_frame_duration {
                 std::thread::sleep(target_frame_duration - elapsed);
             }
         }
-
-        self.finder.save();
+        let _ = self.finder.save();
 
         Ok(())
     }
