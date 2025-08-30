@@ -16,6 +16,9 @@ pub struct Chip8TUI {
     keymap: HashMap<char, u8>,
     max_delta_time: u16,
     sound_hdrl: Option<AudioHandler>,
+    display_string_cache: String,
+    step_mode: bool,
+    step: bool,
 }
 
 impl Chip8TUI {
@@ -26,6 +29,9 @@ impl Chip8TUI {
             keymap: HashMap::new(),
             max_delta_time: 30, // 30ms
             sound_hdrl,
+            display_string_cache: String::with_capacity(64 * 32 + 31),
+            step_mode: false,
+            step: true,
         }
     }
 
@@ -41,6 +47,13 @@ impl Chip8TUI {
     }
 
     pub fn update(&mut self) -> Action {
+        if self.step_mode {
+            if self.step {
+                self.step = false;
+            } else {
+                return Action::Nope;
+            }
+        }
         let emu_result = self.core.tick();
         let mut action = Action::Nope;
         if let Ok(events) = emu_result {
@@ -85,6 +98,8 @@ impl Chip8TUI {
 
     pub fn handle_key_event(&mut self, event: KeyEvent) -> Action {
         match event.code {
+            KeyCode::Enter => self.step_mode = !self.step_mode,
+            KeyCode::Backspace => self.step = true,
             KeyCode::Char(key) => {
                 if let Some(chip8_key) = self.keymap.get(&key) {
                     self.core.press_key(*chip8_key);
@@ -100,6 +115,8 @@ impl Chip8TUI {
     }
 
     pub fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
+        self.display_string_cache.clear();
+
         let _ = terminal.draw(|f| {
             let chunks = Layout::default()
                 .direction(Direction::Horizontal)
@@ -108,18 +125,17 @@ impl Chip8TUI {
 
             let frame_data = self.core.get_frame_buffer();
 
-            let lines: Vec<Line> = frame_data
-                .chunks_exact(64)
-                .map(|row_slice| {
-                    let row_string = row_slice
-                        .iter()
-                        .map(|&pixel_on| if pixel_on { '█' } else { ' ' })
-                        .collect::<String>();
-
-                    Line::from(row_string)
-                })
-                .collect();
-            let display = Paragraph::new(lines)
+            let mut rows = frame_data.chunks_exact(64).peekable();
+            while let Some(row_slice) = rows.next() {
+                for &pixel_on in row_slice {
+                    self.display_string_cache
+                        .push(if pixel_on { '█' } else { ' ' });
+                }
+                if rows.peek().is_some() {
+                    self.display_string_cache.push('\n');
+                }
+            }
+            let display = Paragraph::new(self.display_string_cache.as_str())
                 .block(Block::default().title("Display").borders(Borders::ALL));
 
             f.render_widget(display, chunks[0]);
