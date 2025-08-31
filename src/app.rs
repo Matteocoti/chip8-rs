@@ -62,6 +62,7 @@ impl App {
 
         'main_loop: loop {
             let frame_start = std::time::Instant::now();
+            let mut needs_redraw = false;
             while crossterm::event::poll(Duration::ZERO)? {
                 if let Ok(Event::Key(key_event)) = crossterm::event::read() {
                     if let KeyEvent {
@@ -80,17 +81,22 @@ impl App {
                         Mode::RomSelection => self.finder.handle_key_event(key_event),
                         Mode::Menu => self.menu.handle_key_event(key_event),
                     };
-                    self.handle_action(action, &mut terminal);
+                    if self.handle_action(action) {
+                        needs_redraw = true;
+                    }
                 }
             }
 
             if self.should_quit {
                 break 'main_loop;
             }
-
             let update_action = self.update();
-            self.handle_action(update_action, &mut terminal);
-
+            if self.handle_action(update_action) {
+                needs_redraw = true;
+            }
+            if needs_redraw {
+                self.render(&mut terminal);
+            }
             let elapsed = frame_start.elapsed();
             if elapsed < target_frame_duration {
                 std::thread::sleep(target_frame_duration - elapsed);
@@ -139,40 +145,35 @@ impl App {
         action
     }
 
-    fn switch_mode(
-        &mut self,
-        mode: Mode,
-        terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-    ) {
+    fn switch_mode(&mut self, mode: Mode) {
         self.mode = mode;
 
         if let Mode::Game = self.mode {
             self.emu.config(&self.settings);
         }
-
-        self.render(terminal);
     }
 
-    fn handle_action(
-        &mut self,
-        action: Action,
-        terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-    ) {
+    fn handle_action(&mut self, action: Action) -> bool {
+        let mut needs_render = false;
         match action {
-            Action::GoToSetting => self.switch_mode(Mode::Settings, terminal),
+            Action::GoToSetting => self.switch_mode(Mode::Settings),
             Action::LoadRom(path) => {
                 if self.emu.load_rom(&path) {
                     self.finder.register_rom(path);
-                    self.switch_mode(Mode::Game, terminal);
+                    self.switch_mode(Mode::Game);
                 }
             }
             // Action::GoToGame => self.switch_mode(Mode::Game(Chip8::new())),
-            Action::GoToRomFinder => self.switch_mode(Mode::RomSelection, terminal),
-            Action::GoToMenu => self.switch_mode(Mode::Menu, terminal),
+            Action::GoToRomFinder => self.switch_mode(Mode::RomSelection),
+            Action::GoToMenu => self.switch_mode(Mode::Menu),
             Action::Quit => self.should_quit = true,
-            Action::Render => self.render(terminal),
+            Action::Render => {
+                needs_render = true;
+            }
             _ => (),
         }
+
+        needs_render
     }
 
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
