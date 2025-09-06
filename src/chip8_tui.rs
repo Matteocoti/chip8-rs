@@ -1,5 +1,7 @@
 use crate::audio::AudioHandler;
-use crate::chip8::{Chip8, EmulationEvent};
+use crate::chip8::cpu::EmulationEvent;
+use crate::chip8::*;
+use crate::config_file::get_rom_saved_data_path;
 use crate::{actions::Action, settings::Settings};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
