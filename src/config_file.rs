@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Returns the path to the application persistent data
 ///
@@ -22,4 +22,16 @@ pub fn get_settings_file_path() -> Option<PathBuf> {
 pub fn get_rom_path() -> Option<PathBuf> {
     let config_path = get_config_path();
     config_path.map(|path| path.join("roms.toml"))
+}
+
+fn get_saved_data_path() -> Option<PathBuf> {
+    let config_path = get_config_path();
+
+    config_path.map(|path| path.join("saved_data"))
+}
+
+pub fn get_rom_saved_data_path(rom_name: &str) -> Option<PathBuf> {
+    let save_data_path = get_saved_data_path();
+
+    save_data_path.map(|path| path.join(rom_name))
 }
