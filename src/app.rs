@@ -10,6 +10,7 @@ use ratatui::crossterm::{
     ExecutableCommand,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use std::fs::{File, OpenOptions};
 use std::io::stdout;
 use std::time::Duration;
 

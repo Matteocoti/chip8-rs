@@ -4,9 +4,9 @@ use crate::chip8::Chip8Keyboard;
 use crate::chip8::opcodes::Opcode;
 use crate::chip8::{Chip8Display, Chip8Memory, EmulationError};
 
-use std::fmt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
+use std::{default, fmt};
 // Fontset declaration -> group of sprites stored
 // inside the chip8 memory
 const FONT_SET: [u8; 80] = [
@@ -117,12 +117,8 @@ impl Chip8 {
             max_delta_time: 0,
         };
 
+        chip8.load_fontset();
         // Load fontset into memory
-        chip8
-            .state
-            .memory
-            .load_data(0x000, &FONT_SET, FONT_SET.len());
-
         chip8
     }
 
@@ -576,6 +572,34 @@ impl Chip8 {
 
     pub fn get_state(&self) -> Chip8State {
         self.state.clone()
+    }
+
+    fn load_fontset(&mut self) {
+        self.state
+            .memory
+            .load_data(0x000, &FONT_SET, FONT_SET.len());
+    }
+
+    pub fn reset(&mut self) {
+        // Reset ALL state including memory
+        self.state.memory.clear();
+        self.state.v = [0; 16];
+        self.state.i = 0;
+        self.state.pc = 0x200;
+        self.state.sp = 0;
+        self.state.stack = [0; 16];
+        self.state.delay_tmr = 0;
+        self.state.sound_tmr = 0;
+        self.state.keyboard.clear();
+        self.state.display.clear();
+        self.state.waiting_for_key = false;
+        self.state.register_for_key = 0;
+        self.state.opcode = 0;
+        // Reload font set into memory 0x50-0x9F
+        self.load_fontset();
+
+        self.time = Duration::ZERO;
+        self.last_tick_time = Instant::now();
     }
 }
 

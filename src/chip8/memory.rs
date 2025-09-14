@@ -69,4 +69,8 @@ impl Chip8Memory {
     pub fn size(&self) -> usize {
         mem::size_of_val(&self.0)
     }
+
+    pub fn clear(&mut self) {
+        self.0 = [0; 4096];
+    }
 }
