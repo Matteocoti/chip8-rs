@@ -11,13 +11,13 @@ use ratatui::{
     prelude::CrosstermBackend,
     widgets::{Block, Borders, Paragraph},
 };
-use std::fmt::format;
 use std::fs;
 use std::{collections::HashMap, path::PathBuf};
 
 pub struct Chip8TUI {
     core: Chip8,
-    rom: Option<String>,
+    rom: Option<PathBuf>,
+    rom_name: String,
     keymap: HashMap<char, u8>,
     max_delta_time: u16,
     sound_hdrl: Option<AudioHandler>,
@@ -32,6 +32,7 @@ impl Chip8TUI {
         Self {
             core: Chip8::new(),
             rom: None,
+            rom_name: String::new(),
             keymap: HashMap::new(),
             max_delta_time: 30, // 30ms
             sound_hdrl,
@@ -81,12 +82,12 @@ impl Chip8TUI {
     }
 
     pub fn load_rom(&mut self, rom_path: &PathBuf) -> bool {
-        let rom_rd_res = std::fs::read(rom_path);
+        let rom_rd_res = std::fs::read(&rom_path);
 
         if let Ok(rom_data) = rom_rd_res {
             if self.core.load_rom(rom_data) {
-                let rom_name = rom_path.file_name().unwrap().to_string_lossy().into_owned();
-                self.rom = Some(rom_name);
+                self.rom_name = rom_path.file_name().unwrap().to_string_lossy().into_owned();
+                self.rom = Some(rom_path.clone());
                 return true;
             }
         }
@@ -107,6 +108,7 @@ impl Chip8TUI {
 
     pub fn handle_key_event(&mut self, event: KeyEvent) -> Action {
         match event.code {
+            KeyCode::F(4) => self.reset_rom(),
             KeyCode::F(5) => return self.quick_save_state(),
             KeyCode::F(6) => return self.quick_load_state(),
             KeyCode::Enter => self.step_mode = !self.step_mode,
@@ -160,7 +162,7 @@ impl Chip8TUI {
     }
 
     fn save_state(&mut self, file_name: &str) -> Action {
-        let name = self.rom.as_ref().unwrap();
+        let name = self.rom_name.as_ref();
 
         if let Some(save_path) = get_rom_saved_data_path(name) {
             let save_file_name = save_path.join(file_name);
@@ -177,9 +179,8 @@ impl Chip8TUI {
     }
 
     fn quick_save_state(&mut self) -> Action {
-        let name = self.rom.as_ref().unwrap();
         let ts = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let file_name = format!("{}_{}.sav", name, ts);
+        let file_name = format!("{}_{}.sav", &self.rom_name, ts);
         self.save_state(&file_name)
     }
 
@@ -214,9 +215,7 @@ impl Chip8TUI {
             return Action::Nope;
         }
 
-        let rom_name = self.rom.as_ref().unwrap();
-
-        let saved_data = self.find_latest_save_file(rom_name);
+        let saved_data = self.find_latest_save_file(&self.rom_name);
 
         if let Some(data) = saved_data {
             match self.core.load_state(&data) {
@@ -228,6 +227,13 @@ impl Chip8TUI {
             }
         } else {
             Action::Nope
+        }
+    }
+
+    fn reset_rom(&mut self) {
+        if let Some(rom_path) = self.rom.clone() {
+            self.core.reset();
+            let _ = self.load_rom(&rom_path);
         }
     }
 }
