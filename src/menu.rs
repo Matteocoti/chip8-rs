@@ -24,7 +24,6 @@ impl MainMenu {
         state.select(Some(0));
         Self {
             items: vec![
-                "Start Game".to_string(),
                 "Load Rom".to_string(),
                 "Options".to_string(),
                 "Quit".to_string(),

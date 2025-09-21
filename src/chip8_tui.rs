@@ -24,6 +24,9 @@ pub struct Chip8TUI {
     display_string_cache: String,
     step_mode: bool,
     step: bool,
+    start_frequency: u16,
+    current_frequency: u16,
+    frequency_step: u16,
 }
 
 impl Chip8TUI {
@@ -39,6 +42,9 @@ impl Chip8TUI {
             display_string_cache: String::with_capacity(64 * 32 + 31),
             step_mode: false,
             step: true,
+            start_frequency: 500,
+            current_frequency: 500,
+            frequency_step: 125,
         }
     }
 
@@ -97,7 +103,10 @@ impl Chip8TUI {
     pub fn config(&mut self, settings: &Settings) {
         self.keymap.clear();
         self.max_delta_time = settings.get_max_delta_time();
-        self.core.set_frequency(settings.get_frequency());
+        self.start_frequency = settings.get_frequency();
+        self.current_frequency = self.start_frequency;
+        self.frequency_step = self.start_frequency / 4;
+        self.core.set_frequency(self.current_frequency);
         self.core.set_max_delta_time(self.max_delta_time);
         let keymap = settings.get_key_mappings();
 
@@ -108,6 +117,9 @@ impl Chip8TUI {
 
     pub fn handle_key_event(&mut self, event: KeyEvent) -> Action {
         match event.code {
+            KeyCode::F(1) => self.inc_frequency(),
+            KeyCode::F(2) => self.dec_frequency(),
+            KeyCode::F(3) => self.reload_frequency(),
             KeyCode::F(4) => self.reset_rom(),
             KeyCode::F(5) => return self.quick_save_state(),
             KeyCode::F(6) => return self.quick_load_state(),
@@ -235,5 +247,22 @@ impl Chip8TUI {
             self.core.reset();
             let _ = self.load_rom(&rom_path);
         }
+    }
+
+    fn inc_frequency(&mut self) {
+        self.current_frequency += self.frequency_step;
+        self.core.set_frequency(self.current_frequency);
+    }
+
+    fn dec_frequency(&mut self) {
+        if self.current_frequency > self.frequency_step {
+            self.current_frequency -= self.frequency_step
+        }
+        self.core.set_frequency(self.current_frequency);
+    }
+
+    fn reload_frequency(&mut self) {
+        self.current_frequency = self.start_frequency;
+        self.core.set_frequency(self.current_frequency);
     }
 }
