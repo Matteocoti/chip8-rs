@@ -5,6 +5,7 @@ use crate::config_file::get_rom_saved_data_path;
 use crate::{actions::Action, settings::Settings};
 use chrono::Utc;
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::Frame;
 use ratatui::{
     Terminal,
     layout::{Constraint, Direction, Layout},
@@ -139,38 +140,36 @@ impl Chip8TUI {
         Action::Nope
     }
 
-    pub fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
+    pub fn render(&mut self, f: &mut Frame) {
         self.display_string_cache.clear();
 
-        let _ = terminal.draw(|f| {
-            let chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Ratio(3, 5), Constraint::Ratio(2, 5)].as_ref())
-                .split(f.area());
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Ratio(3, 5), Constraint::Ratio(2, 5)].as_ref())
+            .split(f.area());
 
-            let frame_data = self.core.get_frame_buffer();
+        let frame_data = self.core.get_frame_buffer();
 
-            let mut rows = frame_data.chunks_exact(64).peekable();
-            while let Some(row_slice) = rows.next() {
-                for &pixel_on in row_slice {
-                    self.display_string_cache
-                        .push(if pixel_on { '█' } else { ' ' });
-                }
-                if rows.peek().is_some() {
-                    self.display_string_cache.push('\n');
-                }
+        let mut rows = frame_data.chunks_exact(64).peekable();
+        while let Some(row_slice) = rows.next() {
+            for &pixel_on in row_slice {
+                self.display_string_cache
+                    .push(if pixel_on { '█' } else { ' ' });
             }
-            let display = Paragraph::new(self.display_string_cache.as_str())
-                .block(Block::default().title("Display").borders(Borders::ALL));
+            if rows.peek().is_some() {
+                self.display_string_cache.push('\n');
+            }
+        }
+        let display = Paragraph::new(self.display_string_cache.as_str())
+            .block(Block::default().title("Display").borders(Borders::ALL));
 
-            f.render_widget(display, chunks[0]);
+        f.render_widget(display, chunks[0]);
 
-            let state_string = self.core.get_state().to_string();
+        let state_string = self.core.get_state().to_string();
 
-            let paragraph = Paragraph::new(state_string);
+        let paragraph = Paragraph::new(state_string);
 
-            f.render_widget(paragraph, chunks[1]);
-        });
+        f.render_widget(paragraph, chunks[1]);
     }
 
     fn save_state(&mut self, file_name: &str) -> Action {

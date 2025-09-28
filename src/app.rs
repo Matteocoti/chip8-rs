@@ -2,6 +2,7 @@ use crate::actions::Action;
 use crate::browser::RomFinder;
 use crate::chip8_tui::Chip8TUI;
 use crate::menu::MainMenu;
+use crate::performance_metrics::PerformanceMetrics;
 use crate::settings::Settings;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Terminal;
@@ -10,6 +11,7 @@ use ratatui::crossterm::{
     ExecutableCommand,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use ratatui::layout::{Constraint, Direction, Layout};
 use std::fs::{File, OpenOptions};
 use std::io::stdout;
 use std::time::Duration;
@@ -24,10 +26,12 @@ pub enum Mode {
 pub struct App {
     mode: Mode, // Application state
     should_quit: bool,
-    settings: Settings, // Application settings
-    menu: MainMenu,     // Main menu component
-    finder: RomFinder,  // Rom finder component
-    emu: Chip8TUI,      // Emulator component
+    settings: Settings,          // Application settings
+    menu: MainMenu,              // Main menu component
+    finder: RomFinder,           // Rom finder component
+    emu: Chip8TUI,               // Emulator component
+    lofg: File,                  // Optional log file path
+    metrics: PerformanceMetrics, // Performance metrics tracker
 }
 
 fn init_tui_terminal() -> color_eyre::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
@@ -44,6 +48,9 @@ fn restore_terminal() -> color_eyre::Result<()> {
 
 impl App {
     pub fn new() -> Self {
+        let mut options = OpenOptions::new();
+        let logf = options.append(true).create(true).open("foo.txt").unwrap();
+
         Self {
             mode: Mode::Menu,
             should_quit: false,
@@ -51,6 +58,8 @@ impl App {
             menu: MainMenu::new(),
             finder: RomFinder::new(),
             emu: Chip8TUI::new(),
+            lofg: logf,
+            metrics: PerformanceMetrics::new(200),
         }
     }
 
@@ -62,18 +71,19 @@ impl App {
         self.render(&mut terminal);
 
         'main_loop: loop {
-            let frame_start = std::time::Instant::now();
+            let frame_start = self.metrics.start_frame();
             let mut needs_redraw = false;
             while crossterm::event::poll(Duration::ZERO)? {
                 if let Ok(Event::Key(key_event)) = crossterm::event::read() {
-                    if let KeyEvent {
-                        code: KeyCode::Char('c'),
-                        modifiers: KeyModifiers::CONTROL,
-                        ..
-                    } = key_event
-                    {
-                        self.should_quit = true;
-                        break;
+                    match key_event.code {
+                        KeyCode::Char('c') => {
+                            if key_event.modifiers.contains(KeyModifiers::CONTROL) {
+                                self.should_quit = true;
+                                break;
+                            }
+                        }
+                        KeyCode::F(12) => self.metrics.toggle_visibility(),
+                        _ => (),
                     }
 
                     let action = match self.mode {
@@ -98,7 +108,7 @@ impl App {
             if needs_redraw {
                 self.render(&mut terminal);
             }
-            let elapsed = frame_start.elapsed();
+            let elapsed = self.metrics.end_frame(frame_start);
             if elapsed < target_frame_duration {
                 std::thread::sleep(target_frame_duration - elapsed);
             }
@@ -178,11 +188,29 @@ impl App {
     }
 
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
-        match &mut self.mode {
-            Mode::Menu => self.menu.render(terminal),
-            Mode::RomSelection => self.finder.render(terminal),
-            Mode::Game => self.emu.render(terminal),
-            Mode::Settings => self.settings.render(terminal),
-        }
+        let _ = terminal.draw(|f| {
+            match &mut self.mode {
+                Mode::Menu => self.menu.render(f),
+                Mode::RomSelection => self.finder.render(f),
+                Mode::Game => self.emu.render(f),
+                Mode::Settings => self.settings.render(f),
+            }
+
+            // After the mode has rendered, overlay the performance metrics if visible
+            if self.metrics.is_visible() {
+                // Create a small area at the bottom of the screen for metrics
+                let metrics_area = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(
+                        [
+                            Constraint::Min(0),
+                            Constraint::Length(1), // Just a single line
+                        ]
+                        .as_ref(),
+                    )
+                    .split(f.area())[1];
+                self.metrics.render(f, metrics_area);
+            }
+        });
     }
 }

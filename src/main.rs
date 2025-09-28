@@ -7,6 +7,7 @@ mod chip8_tui;
 mod config_file;
 mod constants;
 mod menu;
+mod performance_metrics;
 mod settings;
 use crate::app::App;
 

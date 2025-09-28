@@ -1,4 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::Frame;
 use ratatui::backend::CrosstermBackend;
 use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
@@ -72,66 +73,63 @@ impl MainMenu {
                 Action::Render
             }
             KeyCode::Enter => match self.state.selected().unwrap() {
-                0 => Action::GoToGame,
-                1 => Action::GoToRomFinder,
-                2 => Action::GoToSetting,
-                3 => Action::Quit,
+                0 => Action::GoToRomFinder,
+                1 => Action::GoToSetting,
+                2 => Action::Quit,
                 _ => Action::Nope,
             },
             _ => Action::Nope,
         }
     }
 
-    pub fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
-        let _ = terminal.draw(|f| {
-            let vertical_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints(
-                    [
-                        Constraint::Ratio(1, 5),
-                        Constraint::Ratio(1, 5),
-                        Constraint::Ratio(2, 5),
-                        Constraint::Ratio(1, 5),
-                    ]
-                    .as_ref(),
-                )
-                .split(f.area());
+    pub fn render(&mut self, f: &mut Frame) {
+        let vertical_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Ratio(1, 5),
+                    Constraint::Ratio(1, 5),
+                    Constraint::Ratio(2, 5),
+                    Constraint::Ratio(1, 5),
+                ]
+                .as_ref(),
+            )
+            .split(f.area());
 
-            // Title
-            let title_paragraph = Paragraph::new(TITLE)
-                .alignment(Alignment::Center)
-                .block(Block::default());
-            f.render_widget(title_paragraph, vertical_chunks[0]);
+        // Title
+        let title_paragraph = Paragraph::new(TITLE)
+            .alignment(Alignment::Center)
+            .block(Block::default());
+        f.render_widget(title_paragraph, vertical_chunks[0]);
 
-            // Subtitle
-            let subtitle_paragraph = Paragraph::new(SUB_TITLE)
-                .alignment(Alignment::Center)
-                .block(Block::default());
-            f.render_widget(subtitle_paragraph, vertical_chunks[1]);
+        // Subtitle
+        let subtitle_paragraph = Paragraph::new(SUB_TITLE)
+            .alignment(Alignment::Center)
+            .block(Block::default());
+        f.render_widget(subtitle_paragraph, vertical_chunks[1]);
 
-            let selected_index = self.state.selected();
-            let menu_lines: Vec<Line> = self
-                .items
-                .iter()
-                .enumerate() // Usiamo enumerate() per ottenere l'indice di ogni elemento
-                .map(|(index, item_text)| {
-                    if Some(index) == selected_index {
-                        let styled_text = format!(">> {} <<", item_text);
-                        Line::from(Span::styled(
-                            styled_text,
-                            Style::default().add_modifier(Modifier::BOLD),
-                        ))
-                    } else {
-                        Line::from(item_text.clone())
-                    }
-                })
-                .collect();
+        let selected_index = self.state.selected();
+        let menu_lines: Vec<Line> = self
+            .items
+            .iter()
+            .enumerate() // Usiamo enumerate() per ottenere l'indice di ogni elemento
+            .map(|(index, item_text)| {
+                if Some(index) == selected_index {
+                    let styled_text = format!(">> {} <<", item_text);
+                    Line::from(Span::styled(
+                        styled_text,
+                        Style::default().add_modifier(Modifier::BOLD),
+                    ))
+                } else {
+                    Line::from(item_text.clone())
+                }
+            })
+            .collect();
 
-            let menu_paragraph = Paragraph::new(menu_lines)
-                .alignment(Alignment::Center)
-                .block(Block::default());
+        let menu_paragraph = Paragraph::new(menu_lines)
+            .alignment(Alignment::Center)
+            .block(Block::default());
 
-            f.render_widget(menu_paragraph, vertical_chunks[2]);
-        });
+        f.render_widget(menu_paragraph, vertical_chunks[2]);
     }
 }

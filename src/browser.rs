@@ -502,69 +502,67 @@ impl RomFinder {
         }
     }
 
-    pub fn render(&mut self, terminal: &mut ratatui::Terminal<CrosstermBackend<std::io::Stdout>>) {
-        let _ = terminal.draw(|f| {
-            let vertical_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Ratio(1, 5), Constraint::Ratio(4, 5)].as_ref())
-                .split(f.area());
+    pub fn render(&mut self, f: &mut Frame) {
+        let vertical_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Ratio(1, 5), Constraint::Ratio(4, 5)].as_ref())
+            .split(f.area());
 
-            // Title
-            let title_paragraph = Paragraph::new(TITLE)
-                .alignment(Alignment::Center)
-                .block(Block::default());
-            f.render_widget(title_paragraph, vertical_chunks[0]);
+        // Title
+        let title_paragraph = Paragraph::new(TITLE)
+            .alignment(Alignment::Center)
+            .block(Block::default());
+        f.render_widget(title_paragraph, vertical_chunks[0]);
 
-            let browser_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(1),
-                    Constraint::Min(0),
-                    Constraint::Length(1),
-                ])
-                .split(vertical_chunks[1]);
+        let browser_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Min(0),
+                Constraint::Length(1),
+            ])
+            .split(vertical_chunks[1]);
 
-            let header = browser_chunks[0];
-            let content_area = browser_chunks[1];
-            let footer_area = browser_chunks[2];
+        let header = browser_chunks[0];
+        let content_area = browser_chunks[1];
+        let footer_area = browser_chunks[2];
 
-            let main_chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
-                .split(content_area);
+        let main_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
+            .split(content_area);
 
-            let browser_chunk = main_chunks[0];
-            let history = main_chunks[1];
+        let browser_chunk = main_chunks[0];
+        let history = main_chunks[1];
 
-            self.browser
-                .render(f, browser_chunk, self.active_column == 0);
-            self.history.render(f, history, self.active_column == 1);
+        self.browser
+            .render(f, browser_chunk, self.active_column == 0);
+        self.history.render(f, history, self.active_column == 1);
 
-            let mut footer = match self.active_column {
-                0 => self.browser.render_footer().spans,
-                1 => self.history.render_footer().spans,
-                _ => vec![],
-            };
+        let mut footer = match self.active_column {
+            0 => self.browser.render_footer().spans,
+            1 => self.history.render_footer().spans,
+            _ => vec![],
+        };
 
-            if !footer.is_empty() {
-                let key_style = Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(ratatui::style::Modifier::BOLD);
-                let text_style = Style::default().fg(Color::Gray);
+        if !footer.is_empty() {
+            let key_style = Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(ratatui::style::Modifier::BOLD);
+            let text_style = Style::default().fg(Color::Gray);
+            footer.push(Span::styled(" | ", text_style));
+            footer.push(Span::styled("[TAB]", key_style));
+            footer.push(Span::styled(" Switch panel", text_style));
+
+            if !self.browser.is_editing() {
                 footer.push(Span::styled(" | ", text_style));
-                footer.push(Span::styled("[TAB]", key_style));
-                footer.push(Span::styled(" Switch panel", text_style));
-
-                if !self.browser.is_editing() {
-                    footer.push(Span::styled(" | ", text_style));
-                    footer.push(Span::styled("[ESC]", key_style));
-                    footer.push(Span::styled(" Go to main menu", text_style));
-                }
+                footer.push(Span::styled("[ESC]", key_style));
+                footer.push(Span::styled(" Go to main menu", text_style));
             }
+        }
 
-            let help_line = Line::from(footer).alignment(Alignment::Right);
-            f.render_widget(help_line, footer_area);
-        });
+        let help_line = Line::from(footer).alignment(Alignment::Right);
+        f.render_widget(help_line, footer_area);
     }
 
     pub fn register_rom(&mut self, rom_path: PathBuf) {
