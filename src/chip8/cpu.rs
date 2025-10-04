@@ -4,9 +4,9 @@ use crate::chip8::Chip8Keyboard;
 use crate::chip8::opcodes::Opcode;
 use crate::chip8::{Chip8Display, Chip8Memory, EmulationError};
 
-use std::path::{Path, PathBuf};
+use std::fmt;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use std::{default, fmt};
 // Fontset declaration -> group of sprites stored
 // inside the chip8 memory
 const FONT_SET: [u8; 80] = [

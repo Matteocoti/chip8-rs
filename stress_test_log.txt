@@ -1,0 +1,7 @@
+Inizio stress test per 100000 tick...
+
+--- Risultato Stress Test ---
+Tick Eseguiti: 100000
+Tempo Totale Impiegato: 30.661309ms
+Tempo Medio per Tick: 306ns
+Frequenza Emulata Effettiva: 3.26 MHz

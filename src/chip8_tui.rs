@@ -1,15 +1,14 @@
 use crate::audio::AudioHandler;
 use crate::chip8::cpu::EmulationEvent;
 use crate::chip8::*;
+use crate::component::{Action, Component, Transition};
 use crate::config_file::get_rom_saved_data_path;
-use crate::{actions::Action, settings::Settings};
 use chrono::Utc;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
+use ratatui::layout::Rect;
 use ratatui::{
-    Terminal,
     layout::{Constraint, Direction, Layout},
-    prelude::CrosstermBackend,
     widgets::{Block, Borders, Paragraph},
 };
 use std::fs;
@@ -31,9 +30,10 @@ pub struct Chip8TUI {
 }
 
 impl Chip8TUI {
-    pub fn new() -> Self {
+    pub fn new(rom: &PathBuf) -> Self {
         let sound_hdrl = AudioHandler::new();
-        Self {
+
+        let mut tui = Self {
             core: Chip8::new(),
             rom: None,
             rom_name: String::new(),
@@ -46,7 +46,11 @@ impl Chip8TUI {
             start_frequency: 500,
             current_frequency: 500,
             frequency_step: 125,
-        }
+        };
+
+        tui.load_rom(rom);
+
+        tui
     }
 
     fn play_sound(&mut self) {
@@ -58,34 +62,6 @@ impl Chip8TUI {
         if let Some(ref sound_hdrl) = self.sound_hdrl {
             sound_hdrl.pause();
         }
-    }
-
-    pub fn update(&mut self) -> Action {
-        if self.step_mode {
-            if self.step {
-                self.step = false;
-            } else {
-                return Action::Nope;
-            }
-        }
-        let emu_result = self.core.tick();
-        let mut action = Action::Nope;
-        if let Ok(events) = emu_result {
-            for evt in events {
-                match evt {
-                    EmulationEvent::ScreenUpdated => {
-                        action = Action::Render;
-                    }
-                    EmulationEvent::SoundStarted => {
-                        self.play_sound();
-                    }
-                    EmulationEvent::SoundStopped => {
-                        self.stop_sound();
-                    }
-                }
-            }
-        }
-        action
     }
 
     pub fn load_rom(&mut self, rom_path: &PathBuf) -> bool {
@@ -101,76 +77,20 @@ impl Chip8TUI {
         false
     }
 
-    pub fn config(&mut self, settings: &Settings) {
-        self.keymap.clear();
-        self.max_delta_time = settings.get_max_delta_time();
-        self.start_frequency = settings.get_frequency();
-        self.current_frequency = self.start_frequency;
-        self.frequency_step = self.start_frequency / 4;
-        self.core.set_frequency(self.current_frequency);
-        self.core.set_max_delta_time(self.max_delta_time);
-        let keymap = settings.get_key_mappings();
-
-        for (chip8_key, key_char) in keymap.iter().enumerate() {
-            self.keymap.insert(*key_char, chip8_key as u8);
-        }
-    }
-
-    pub fn handle_key_event(&mut self, event: KeyEvent) -> Action {
-        match event.code {
-            KeyCode::F(1) => self.inc_frequency(),
-            KeyCode::F(2) => self.dec_frequency(),
-            KeyCode::F(3) => self.reload_frequency(),
-            KeyCode::F(4) => self.reset_rom(),
-            KeyCode::F(5) => return self.quick_save_state(),
-            KeyCode::F(6) => return self.quick_load_state(),
-            KeyCode::Enter => self.step_mode = !self.step_mode,
-            KeyCode::Char('n') => self.step = true,
-            KeyCode::Char(key) => {
-                if let Some(chip8_key) = self.keymap.get(&key) {
-                    self.core.press_key(*chip8_key);
-                }
-            }
-            KeyCode::Esc => {
-                self.stop_sound();
-                return Action::GoToMenu;
-            }
-            _ => (),
-        }
-        Action::Nope
-    }
-
-    pub fn render(&mut self, f: &mut Frame) {
-        self.display_string_cache.clear();
-
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Ratio(3, 5), Constraint::Ratio(2, 5)].as_ref())
-            .split(f.area());
-
-        let frame_data = self.core.get_frame_buffer();
-
-        let mut rows = frame_data.chunks_exact(64).peekable();
-        while let Some(row_slice) = rows.next() {
-            for &pixel_on in row_slice {
-                self.display_string_cache
-                    .push(if pixel_on { '█' } else { ' ' });
-            }
-            if rows.peek().is_some() {
-                self.display_string_cache.push('\n');
-            }
-        }
-        let display = Paragraph::new(self.display_string_cache.as_str())
-            .block(Block::default().title("Display").borders(Borders::ALL));
-
-        f.render_widget(display, chunks[0]);
-
-        let state_string = self.core.get_state().to_string();
-
-        let paragraph = Paragraph::new(state_string);
-
-        f.render_widget(paragraph, chunks[1]);
-    }
+    // pub fn config(&mut self, settings: &Settings) {
+    //     self.keymap.clear();
+    //     self.max_delta_time = settings.get_max_delta_time();
+    //     self.start_frequency = settings.get_frequency();
+    //     self.current_frequency = self.start_frequency;
+    //     self.frequency_step = self.start_frequency / 4;
+    //     self.core.set_frequency(self.current_frequency);
+    //     self.core.set_max_delta_time(self.max_delta_time);
+    //     let keymap = settings.get_key_mappings();
+    //
+    //     for (chip8_key, key_char) in keymap.iter().enumerate() {
+    //         self.keymap.insert(*key_char, chip8_key as u8);
+    //     }
+    // }
 
     fn save_state(&mut self, file_name: &str) -> Action {
         let name = self.rom_name.as_ref();
@@ -263,5 +183,91 @@ impl Chip8TUI {
     fn reload_frequency(&mut self) {
         self.current_frequency = self.start_frequency;
         self.core.set_frequency(self.current_frequency);
+    }
+}
+
+impl Component for Chip8TUI {
+    fn handle_key_event(&mut self, event: KeyEvent) -> Action {
+        match event.code {
+            KeyCode::F(1) => self.inc_frequency(),
+            KeyCode::F(2) => self.dec_frequency(),
+            KeyCode::F(3) => self.reload_frequency(),
+            KeyCode::F(4) => self.reset_rom(),
+            KeyCode::F(5) => return self.quick_save_state(),
+            KeyCode::F(6) => return self.quick_load_state(),
+            KeyCode::Enter => self.step_mode = !self.step_mode,
+            KeyCode::Char('n') => self.step = true,
+            KeyCode::Char(key) => {
+                if let Some(chip8_key) = self.keymap.get(&key) {
+                    self.core.press_key(*chip8_key);
+                }
+            }
+            KeyCode::Esc => {
+                self.stop_sound();
+                return Action::Transition(Transition::Pop);
+            }
+            _ => (),
+        }
+        Action::Nope
+    }
+
+    fn render(&mut self, f: &mut Frame, area: Rect) {
+        self.display_string_cache.clear();
+
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Ratio(3, 5), Constraint::Ratio(2, 5)].as_ref())
+            .split(area);
+
+        let frame_data = self.core.get_frame_buffer();
+
+        let mut rows = frame_data.chunks_exact(64).peekable();
+        while let Some(row_slice) = rows.next() {
+            for &pixel_on in row_slice {
+                self.display_string_cache
+                    .push(if pixel_on { '█' } else { ' ' });
+            }
+            if rows.peek().is_some() {
+                self.display_string_cache.push('\n');
+            }
+        }
+        let display = Paragraph::new(self.display_string_cache.as_str())
+            .block(Block::default().title("Display").borders(Borders::ALL));
+
+        f.render_widget(display, chunks[0]);
+
+        let state_string = self.core.get_state().to_string();
+
+        let paragraph = Paragraph::new(state_string);
+
+        f.render_widget(paragraph, chunks[1]);
+    }
+
+    fn update(&mut self) -> Action {
+        if self.step_mode {
+            if self.step {
+                self.step = false;
+            } else {
+                return Action::Nope;
+            }
+        }
+        let emu_result = self.core.tick();
+        let mut action = Action::Nope;
+        if let Ok(events) = emu_result {
+            for evt in events {
+                match evt {
+                    EmulationEvent::ScreenUpdated => {
+                        action = Action::Render;
+                    }
+                    EmulationEvent::SoundStarted => {
+                        self.play_sound();
+                    }
+                    EmulationEvent::SoundStopped => {
+                        self.stop_sound();
+                    }
+                }
+            }
+        }
+        action
     }
 }

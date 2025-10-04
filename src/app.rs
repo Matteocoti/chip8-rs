@@ -1,9 +1,7 @@
-use crate::actions::Action;
-use crate::browser::RomFinder;
-use crate::chip8_tui::Chip8TUI;
+use crate::component::{self, Action, Component};
+use crate::config_manager::ConfigManager;
 use crate::menu::MainMenu;
 use crate::performance_metrics::PerformanceMetrics;
-use crate::settings::Settings;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -16,22 +14,12 @@ use std::fs::{File, OpenOptions};
 use std::io::stdout;
 use std::time::Duration;
 
-pub enum Mode {
-    Menu,
-    RomSelection,
-    Settings,
-    Game,
-}
-
 pub struct App {
-    mode: Mode, // Application state
     should_quit: bool,
-    settings: Settings,          // Application settings
-    menu: MainMenu,              // Main menu component
-    finder: RomFinder,           // Rom finder component
-    emu: Chip8TUI,               // Emulator component
+    stack: Vec<Box<dyn Component>>,
     lofg: File,                  // Optional log file path
     metrics: PerformanceMetrics, // Performance metrics tracker
+    config: ConfigManager,
 }
 
 fn init_tui_terminal() -> color_eyre::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
@@ -51,16 +39,55 @@ impl App {
         let mut options = OpenOptions::new();
         let logf = options.append(true).create(true).open("foo.txt").unwrap();
 
+        let config = ConfigManager::new();
+
+        let main_menu = Box::new(MainMenu::new(config.clone()));
+
         Self {
-            mode: Mode::Menu,
             should_quit: false,
-            settings: Settings::new(),
-            menu: MainMenu::new(),
-            finder: RomFinder::new(),
-            emu: Chip8TUI::new(),
+            stack: vec![main_menu],
             lofg: logf,
             metrics: PerformanceMetrics::new(200),
+            config,
         }
+    }
+
+    fn handle_action(&mut self, action: Action) -> bool {
+        let mut needs_render = false;
+
+        match action {
+            Action::Quit => self.should_quit = true,
+            Action::Render => needs_render = true,
+            Action::Transition(transition) => match transition {
+                crate::component::Transition::None => (),
+                crate::component::Transition::Pop => {
+                    let component = self.stack.pop();
+                    if let Some(mut pane) = component {
+                        pane.on_exit();
+                    }
+                    needs_render = true;
+                }
+                crate::component::Transition::Push(mut component) => {
+                    component.on_entry();
+                    self.stack.push(component);
+                    needs_render = true;
+                }
+                crate::component::Transition::Switch(mut component) => {
+                    if !self.stack.is_empty() {
+                        let component = self.stack.pop();
+                        if let Some(mut pane) = component {
+                            pane.on_exit();
+                        }
+                    }
+                    component.on_entry();
+                    self.stack.push(component);
+                    needs_render = true;
+                }
+            },
+            _ => (),
+        }
+
+        needs_render
     }
 
     pub fn run(&mut self) -> Result<(), color_eyre::Report> {
@@ -86,15 +113,8 @@ impl App {
                         _ => (),
                     }
 
-                    let action = match self.mode {
-                        Mode::Game => self.emu.handle_key_event(key_event),
-                        Mode::Settings => self.settings.handle_key_event(key_event),
-                        Mode::RomSelection => self.finder.handle_key_event(key_event),
-                        Mode::Menu => self.menu.handle_key_event(key_event),
-                    };
-                    if self.handle_action(action) {
-                        needs_redraw = true;
-                    }
+                    let action = self.handle_events(key_event);
+                    needs_redraw |= self.handle_action(action);
                 }
             }
 
@@ -102,9 +122,7 @@ impl App {
                 break 'main_loop;
             }
             let update_action = self.update();
-            if self.handle_action(update_action) {
-                needs_redraw = true;
-            }
+            needs_redraw |= self.handle_action(update_action);
             if needs_redraw {
                 self.render(&mut terminal);
             }
@@ -113,88 +131,25 @@ impl App {
                 std::thread::sleep(target_frame_duration - elapsed);
             }
         }
-        let _ = self.finder.save();
 
         Ok(())
     }
 
     fn update(&mut self) -> Action {
-        match &mut self.mode {
-            Mode::Game => self.emu.update(),
-            _ => Action::Nope,
-        }
+        let component = self.stack.last_mut().unwrap();
+        component.update()
     }
 
-    fn handle_events(&mut self) -> Action {
-        let mut action = Action::Nope;
-        // Polling the event if it is available
-        if let Ok(one_evt) = crossterm::event::poll(Duration::from_millis(0)) {
-            if one_evt {
-                if let Ok(evt) = crossterm::event::read() {
-                    if let Event::Key(key_evt) = evt {
-                        if let KeyEvent {
-                            code: KeyCode::Char('c'),
-                            modifiers: KeyModifiers::CONTROL,
-                            ..
-                        } = key_evt
-                        {
-                            self.should_quit = true;
-                        } else {
-                            match &mut self.mode {
-                                Mode::Game => action = self.emu.handle_key_event(key_evt),
-                                Mode::Settings => action = self.settings.handle_key_event(key_evt),
-                                Mode::RomSelection => {
-                                    action = self.finder.handle_key_event(key_evt)
-                                }
-                                Mode::Menu => action = self.menu.handle_key_event(key_evt),
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        action
-    }
-
-    fn switch_mode(&mut self, mode: Mode) {
-        self.mode = mode;
-
-        if let Mode::Game = self.mode {
-            self.emu.config(&self.settings);
-        }
-    }
-
-    fn handle_action(&mut self, action: Action) -> bool {
-        let mut needs_render = false;
-        match action {
-            Action::GoToSetting => self.switch_mode(Mode::Settings),
-            Action::LoadRom(path) => {
-                if self.emu.load_rom(&path) {
-                    self.finder.register_rom(path);
-                    self.switch_mode(Mode::Game);
-                }
-            }
-            // Action::GoToGame => self.switch_mode(Mode::Game(Chip8::new())),
-            Action::GoToRomFinder => self.switch_mode(Mode::RomSelection),
-            Action::GoToMenu => self.switch_mode(Mode::Menu),
-            Action::Quit => self.should_quit = true,
-            Action::Render => {
-                needs_render = true;
-            }
-            _ => (),
-        }
-
-        needs_render
+    fn handle_events(&mut self, event: KeyEvent) -> Action {
+        let component = self.stack.last_mut().unwrap();
+        component.handle_key_event(event)
     }
 
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
         let _ = terminal.draw(|f| {
-            match &mut self.mode {
-                Mode::Menu => self.menu.render(f),
-                Mode::RomSelection => self.finder.render(f),
-                Mode::Game => self.emu.render(f),
-                Mode::Settings => self.settings.render(f),
-            }
+            let component = self.stack.last_mut().unwrap();
+            let area = f.area();
+            component.render(f, area);
 
             // After the mode has rendered, overlay the performance metrics if visible
             if self.metrics.is_visible() {
