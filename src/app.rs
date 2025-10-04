@@ -1,4 +1,4 @@
-use crate::component::{self, Action, Component};
+use crate::component::{Action, Component};
 use crate::config_manager::ConfigManager;
 use crate::menu::MainMenu;
 use crate::performance_metrics::PerformanceMetrics;
@@ -17,7 +17,7 @@ use std::time::Duration;
 pub struct App {
     should_quit: bool,
     stack: Vec<Box<dyn Component>>,
-    lofg: File,                  // Optional log file path
+    log: File,                   // Log file
     metrics: PerformanceMetrics, // Performance metrics tracker
     config: ConfigManager,
 }
@@ -46,7 +46,7 @@ impl App {
         Self {
             should_quit: false,
             stack: vec![main_menu],
-            lofg: logf,
+            log: logf,
             metrics: PerformanceMetrics::new(200),
             config,
         }
@@ -132,6 +132,7 @@ impl App {
             }
         }
 
+        restore_terminal()?;
         Ok(())
     }
 
