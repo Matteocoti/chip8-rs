@@ -63,7 +63,7 @@ impl Chip8Display {
     }
 
     pub fn pixel_state(&self, row: usize, column: usize) -> Result<bool, EmulationError> {
-        if row > DISPLAY_ROWS || column > DISPLAY_COLS {
+        if row >= DISPLAY_ROWS || column >= DISPLAY_COLS {
             return Err(EmulationError::DisplayLimit);
         }
 
@@ -76,7 +76,7 @@ impl Chip8Display {
         column: usize,
         value: bool,
     ) -> Result<(), EmulationError> {
-        if row > DISPLAY_ROWS || column > DISPLAY_COLS {
+        if row >= DISPLAY_ROWS || column >= DISPLAY_COLS {
             return Err(EmulationError::DisplayLimit);
         }
 
