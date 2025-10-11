@@ -50,7 +50,7 @@ impl Chip8Memory {
     pub fn read_word(&self, address: usize) -> Result<u16, EmulationError> {
         let end_data = address + 2;
 
-        if end_data >= self.0.len() {
+        if end_data > self.0.len() {
             return Err(EmulationError::InvalidAddress(address as u16));
         }
 
