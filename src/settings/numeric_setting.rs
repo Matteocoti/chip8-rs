@@ -29,7 +29,7 @@ impl SettingItem for NumericSetting {
     }
 
     fn display_value(&self) -> String {
-        format!("{} {}", self.value, self.unit)
+        format!("{}: {} {}", self.label, self.value, self.unit)
     }
 
     fn increment(&mut self) {
