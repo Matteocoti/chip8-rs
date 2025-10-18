@@ -26,6 +26,9 @@ pub struct KeyBindings {
     /// The index of the item currently being edited. `None` if not in edit mode.
     #[serde(skip)]
     editing_index: Option<usize>,
+    /// Path to the file where key bindings are persisted.
+    #[serde(skip)]
+    path: PathBuf,
 }
 
 impl KeyBindings {
@@ -66,9 +69,12 @@ impl KeyBindings {
             data.state = ListState::default();
             data.state.select(Some(0));
             data.editing_index = None;
+            data.path = path.clone();
             data
         } else {
-            Self::default()
+            let mut default = Self::default();
+            default.path = path.clone();
+            default
         }
     }
 }
@@ -85,6 +91,7 @@ impl Default for KeyBindings {
             ],
             state,
             editing_index: None,
+            path: PathBuf::new(),
         }
     }
 }
@@ -155,5 +162,12 @@ impl Component for KeyBindings {
         }
 
         frame.render_stateful_widget(widget, area, &mut self.state);
+    }
+
+    fn on_exit(&mut self) -> Action {
+        if let Err(e) = self.save_to_file(&self.path) {
+            eprintln!("Failed to save key bindings: {}", e);
+        }
+        Action::Nope
     }
 }
