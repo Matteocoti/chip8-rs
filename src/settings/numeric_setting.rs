@@ -28,6 +28,10 @@ impl SettingItem for NumericSetting {
         &self.label
     }
 
+    fn get_value(&self) -> i64 {
+        self.value
+    }
+
     fn display_value(&self) -> String {
         format!("{} {}", self.value, self.unit)
     }

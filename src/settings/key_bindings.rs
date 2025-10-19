@@ -50,6 +50,10 @@ impl KeyBindings {
         self.state.select(Some(i));
     }
 
+    pub fn get_keyboard(&self) -> &[char] {
+        &self.keyboard
+    }
+
     fn load_from_file(path: &PathBuf) -> io::Result<Self> {
         let content = fs::read_to_string(path)?;
         let bindings: Self = toml::from_str(&content).expect("Failed to deserialize key bindings");

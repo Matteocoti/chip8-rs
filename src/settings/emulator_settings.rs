@@ -94,6 +94,20 @@ impl EmulatorSettings {
             }
         }
     }
+
+    pub fn get_frequency(&self) -> u16 {
+        self.items
+            .get(0)
+            .map(|item| item.get_value().max(1) as u16)
+            .unwrap_or(500)
+    }
+
+    pub fn get_max_delta_time(&self) -> u16 {
+        self.items
+            .get(1)
+            .map(|item| item.get_value().max(0) as u16)
+            .unwrap_or(30)
+    }
 }
 
 impl Default for EmulatorSettings {

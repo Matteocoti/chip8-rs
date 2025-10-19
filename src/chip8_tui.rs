@@ -3,6 +3,8 @@ use crate::chip8::cpu::EmulationEvent;
 use crate::chip8::*;
 use crate::component::{Action, Component, Transition};
 use crate::config_file::get_rom_saved_data_path;
+use crate::config_manager::ConfigManager;
+use crate::settings::{EmulatorSettings, KeyBindings};
 use chrono::Utc;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
@@ -31,21 +33,38 @@ pub struct Chip8TUI {
 
 impl Chip8TUI {
     pub fn new(rom: &PathBuf) -> Self {
+        let config = ConfigManager::new();
+        let key_bindings = KeyBindings::load(&config.key_bindings_path);
+        let emulator_settings = EmulatorSettings::load(&config.emulator_settings_path);
+
+        let frequency = emulator_settings.get_frequency();
+        let max_delta_time = emulator_settings.get_max_delta_time();
+        let frequency_step = (frequency / 4).max(1);
+
+        let mut keymap = HashMap::new();
+        for (chip8_key, &qwerty_char) in key_bindings.get_keyboard().iter().enumerate() {
+            keymap.insert(qwerty_char, chip8_key as u8);
+        }
+
         let sound_hdrl = AudioHandler::new();
 
+        let mut core = Chip8::new();
+        core.set_frequency(frequency);
+        core.set_max_delta_time(max_delta_time);
+
         let mut tui = Self {
-            core: Chip8::new(),
+            core,
             rom: None,
             rom_name: String::new(),
-            keymap: HashMap::new(),
-            max_delta_time: 30, // 30ms
+            keymap,
+            max_delta_time,
             sound_hdrl,
             display_string_cache: String::with_capacity(64 * 32 + 31),
             step_mode: false,
             step: true,
-            start_frequency: 500,
-            current_frequency: 500,
-            frequency_step: 125,
+            start_frequency: frequency,
+            current_frequency: frequency,
+            frequency_step,
         };
 
         tui.load_rom(rom);
