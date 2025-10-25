@@ -99,7 +99,6 @@ impl Component for SplitViewComponent {
 pub struct SplitViewComponentBuilder {
     panes: Vec<Box<dyn Component>>,
     direction: Option<Direction>,
-    active_idx: Option<usize>,
 }
 
 impl SplitViewComponentBuilder {
@@ -108,7 +107,6 @@ impl SplitViewComponentBuilder {
         Self {
             panes: Vec::new(),
             direction: None,
-            active_idx: None,
         }
     }
 
@@ -124,12 +122,6 @@ impl SplitViewComponentBuilder {
         self
     }
 
-    /// Sets which pane is active by default (optional, defaults to 0).
-    pub fn active_on(mut self, idx: usize) -> Self {
-        self.active_idx = Some(idx);
-        self
-    }
-
     /// Consumes the builder and creates the SplitViewComponent.
     ///
     /// This method will return an error if required fields are missing.
@@ -140,16 +132,9 @@ impl SplitViewComponentBuilder {
 
         let direction = self.direction.ok_or(BuildError::MissingDirection)?;
 
-        // Ensure the active idx is valid, defaulting to 0
-        let active_idx = self.active_idx.unwrap_or(0);
-        if active_idx >= self.panes.len() {
-            // Or return an error for an invalid idx
-            panic!("Active pane idx is out of bounds");
-        }
-
         Ok(SplitViewComponent {
             panes: self.panes,
-            active_idx,
+            active_idx: 0,
             direction,
         })
     }

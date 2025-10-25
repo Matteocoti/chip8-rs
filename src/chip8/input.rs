@@ -13,10 +13,6 @@ impl Default for Chip8Keyboard {
 }
 
 impl Chip8Keyboard {
-    pub fn new() -> Self {
-        Chip8Keyboard::default()
-    }
-
     pub fn clear(&mut self) {
         self.keys = [false; 16];
     }

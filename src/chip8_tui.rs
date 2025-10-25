@@ -19,6 +19,7 @@ pub struct Chip8TUI {
     rom: Option<PathBuf>,
     rom_name: String,
     keymap: HashMap<char, u8>,
+    #[allow(dead_code)]
     max_delta_time: u16,
     sound_hdrl: Option<AudioHandler>,
     display_string_cache: String,

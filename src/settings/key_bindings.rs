@@ -56,6 +56,7 @@ impl KeyBindings {
         Ok(bindings)
     }
 
+    #[allow(dead_code)]
     fn save_to_file(&self, path: &PathBuf) -> io::Result<()> {
         let content = toml::to_string_pretty(self).expect("Failed to serialize key bindings");
         fs::write(path, content)

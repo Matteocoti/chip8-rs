@@ -1,4 +1,4 @@
-use crate::component::{self, Action, Component};
+use crate::component::{Action, Component};
 use crate::config_manager::ConfigManager;
 use crate::menu::MainMenu;
 use crate::performance_metrics::PerformanceMetrics;
@@ -17,9 +17,11 @@ use std::time::Duration;
 pub struct App {
     should_quit: bool,
     stack: Vec<Box<dyn Component>>,
-    lofg: File,                  // Optional log file path
+    #[allow(dead_code)]
+    log: File, // Log file (kept open; write to it in future)
     metrics: PerformanceMetrics, // Performance metrics tracker
-    config: ConfigManager,
+    #[allow(dead_code)]
+    config: ConfigManager, // Kept for future use
 }
 
 fn init_tui_terminal() -> color_eyre::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
@@ -46,7 +48,7 @@ impl App {
         Self {
             should_quit: false,
             stack: vec![main_menu],
-            lofg: logf,
+            log: logf,
             metrics: PerformanceMetrics::new(200),
             config,
         }
@@ -59,7 +61,6 @@ impl App {
             Action::Quit => self.should_quit = true,
             Action::Render => needs_render = true,
             Action::Transition(transition) => match transition {
-                crate::component::Transition::None => (),
                 crate::component::Transition::Pop => {
                     let component = self.stack.pop();
                     if let Some(mut pane) = component {
@@ -132,6 +133,7 @@ impl App {
             }
         }
 
+        restore_terminal()?;
         Ok(())
     }
 

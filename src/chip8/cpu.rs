@@ -499,6 +499,7 @@ impl Chip8 {
         evt
     }
 
+    #[allow(dead_code)]
     pub fn set_max_delta_time(&mut self, max_delta_time: u16) {
         self.max_delta_time = max_delta_time;
     }

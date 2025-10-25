@@ -13,17 +13,6 @@ fn get_config_path() -> Option<PathBuf> {
     }
 }
 
-pub fn get_settings_file_path() -> Option<PathBuf> {
-    let config_path = get_config_path();
-
-    config_path.map(|path| path.join("settings.toml"))
-}
-
-pub fn get_rom_path() -> Option<PathBuf> {
-    let config_path = get_config_path();
-    config_path.map(|path| path.join("roms.toml"))
-}
-
 fn get_saved_data_path() -> Option<PathBuf> {
     let config_path = get_config_path();
 

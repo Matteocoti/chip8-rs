@@ -179,12 +179,13 @@ impl FileBrowser {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_editing(&self) -> bool {
         self.editing
     }
 
+    #[allow(dead_code)]
     pub fn render_footer(&self) -> Line {
-        // Definisci gli stili come prima
         let key_style = Style::default()
             .fg(Color::Cyan)
             .add_modifier(ratatui::style::Modifier::BOLD);
