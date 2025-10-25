@@ -3,6 +3,8 @@ use crate::chip8::cpu::EmulationEvent;
 use crate::chip8::*;
 use crate::component::{Action, Component, Transition};
 use crate::config_file::get_rom_saved_data_path;
+use crate::config_manager::ConfigManager;
+use crate::rom_history::RomHistory;
 use chrono::Utc;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
@@ -187,6 +189,16 @@ impl Chip8TUI {
 }
 
 impl Component for Chip8TUI {
+    fn on_entry(&mut self) -> Action {
+        if let Some(rom_path) = &self.rom.clone() {
+            let config = ConfigManager::new();
+            let mut history = RomHistory::load(&config.rom_history_path);
+            history.register_rom(rom_path.clone());
+            let _ = history.save_to_file(&config.rom_history_path);
+        }
+        Action::Nope
+    }
+
     fn handle_key_event(&mut self, event: KeyEvent) -> Action {
         match event.code {
             KeyCode::F(1) => self.inc_frequency(),

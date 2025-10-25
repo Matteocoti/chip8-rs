@@ -85,7 +85,7 @@ impl RomHistory {
         Ok(history)
     }
 
-    fn save_to_file(&self, path: &PathBuf) -> io::Result<()> {
+    pub fn save_to_file(&self, path: &PathBuf) -> io::Result<()> {
         let content = toml::to_string_pretty(self).expect("Failed to serialize ROM history");
         fs::write(path, content)
     }
