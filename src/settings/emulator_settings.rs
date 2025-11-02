@@ -100,7 +100,7 @@ impl Default for EmulatorSettings {
     fn default() -> Self {
         let items: Vec<Box<dyn SettingItem>> = vec![
             Box::new(NumericSetting::new("Frequency", 500, 5, "Hz")),
-            Box::new(NumericSetting::new("Max Deta Time", 30, 1, "ms")),
+            Box::new(NumericSetting::new("Max Delta Time", 30, 1, "ms")),
         ];
 
         let mut state = ListState::default();
