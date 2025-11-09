@@ -4,6 +4,9 @@ pub trait SettingItem {
     /// Returns the display label for the setting.
     fn label(&self) -> &str;
 
+    /// Returns the current numeric value.
+    fn get_value(&self) -> i64;
+
     /// Returns the current value formatted for display.
     fn display_value(&self) -> String;
 
