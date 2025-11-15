@@ -52,6 +52,7 @@ impl RomHistory {
         self.state.select(Some(i));
     }
 
+    #[allow(dead_code)]
     pub fn register_rom(&mut self, rom_path: PathBuf) {
         let name = rom_path.file_name().unwrap().to_string_lossy().into_owned();
         let path = rom_path.parent().unwrap().to_string_lossy().into_owned();
@@ -63,8 +64,8 @@ impl RomHistory {
         }
     }
 
+    #[allow(dead_code)]
     pub fn render_footer(&self) -> Line {
-        // Definisci gli stili come prima
         let key_style = Style::default()
             .fg(Color::Cyan)
             .add_modifier(ratatui::style::Modifier::BOLD);

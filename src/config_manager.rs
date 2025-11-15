@@ -4,6 +4,7 @@ use std::fs;
 
 #[derive(Debug, Clone)]
 pub struct ConfigManager {
+    #[allow(dead_code)]
     pub base_path: PathBuf,
     pub emulator_settings_path: PathBuf,
     pub key_bindings_path: PathBuf,

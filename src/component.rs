@@ -24,8 +24,6 @@ pub trait Component {
 }
 
 pub enum Transition {
-    /// Do Nothing
-    None,
     /// Pop a component from the stack
     Pop,
     /// Push a new component to the stack

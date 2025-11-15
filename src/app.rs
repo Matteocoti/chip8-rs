@@ -17,9 +17,11 @@ use std::time::Duration;
 pub struct App {
     should_quit: bool,
     stack: Vec<Box<dyn Component>>,
-    log: File,                   // Log file
+    #[allow(dead_code)]
+    log: File, // Log file (kept open; write to it in future)
     metrics: PerformanceMetrics, // Performance metrics tracker
-    config: ConfigManager,
+    #[allow(dead_code)]
+    config: ConfigManager, // Kept for future use
 }
 
 fn init_tui_terminal() -> color_eyre::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
@@ -59,7 +61,6 @@ impl App {
             Action::Quit => self.should_quit = true,
             Action::Render => needs_render = true,
             Action::Transition(transition) => match transition {
-                crate::component::Transition::None => (),
                 crate::component::Transition::Pop => {
                     let component = self.stack.pop();
                     if let Some(mut pane) = component {
