@@ -1,6 +1,6 @@
 use std::{fs, io, path::PathBuf};
 
-use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
     layout::Rect,

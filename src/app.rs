@@ -2,12 +2,12 @@ use crate::component::{Action, Component};
 use crate::config_manager::ConfigManager;
 use crate::menu::MainMenu;
 use crate::performance_metrics::PerformanceMetrics;
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::{
     ExecutableCommand,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags, poll, read},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, supports_keyboard_enhancement},
 };
 use ratatui::layout::{Constraint, Direction, Layout};
 use std::fs::{File, OpenOptions};
@@ -24,13 +24,22 @@ pub struct App {
     config: ConfigManager, // Kept for future use
 }
 
-fn init_tui_terminal() -> color_eyre::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
+fn init_tui_terminal() -> color_eyre::Result<(Terminal<CrosstermBackend<std::io::Stdout>>, bool)> {
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
+    let keyboard_enhanced = supports_keyboard_enhancement().unwrap_or(false);
+    if keyboard_enhanced {
+        stdout().execute(PushKeyboardEnhancementFlags(
+            KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
+        ))?;
+    }
     let terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-    Ok(terminal)
+    Ok((terminal, keyboard_enhanced))
 }
-fn restore_terminal() -> color_eyre::Result<()> {
+fn restore_terminal(keyboard_enhanced: bool) -> color_eyre::Result<()> {
+    if keyboard_enhanced {
+        stdout().execute(PopKeyboardEnhancementFlags)?;
+    }
     stdout().execute(LeaveAlternateScreen)?;
     disable_raw_mode()?;
     Ok(())
@@ -92,7 +101,7 @@ impl App {
     }
 
     pub fn run(&mut self) -> Result<(), color_eyre::Report> {
-        let mut terminal = init_tui_terminal()?;
+        let (mut terminal, keyboard_enhanced) = init_tui_terminal()?;
 
         let target_frame_duration = Duration::from_secs_f64(1.0 / 60.0);
 
@@ -101,8 +110,8 @@ impl App {
         'main_loop: loop {
             let frame_start = self.metrics.start_frame();
             let mut needs_redraw = false;
-            while crossterm::event::poll(Duration::ZERO)? {
-                if let Ok(Event::Key(key_event)) = crossterm::event::read() {
+            while poll(Duration::ZERO)? {
+                if let Ok(Event::Key(key_event)) = read() {
                     match key_event.code {
                         KeyCode::Char('c') => {
                             if key_event.modifiers.contains(KeyModifiers::CONTROL) {
@@ -114,7 +123,11 @@ impl App {
                         _ => (),
                     }
 
-                    let action = self.handle_events(key_event);
+                    let action = if key_event.kind == KeyEventKind::Release {
+                        self.handle_key_release(key_event)
+                    } else {
+                        self.handle_events(key_event)
+                    };
                     needs_redraw |= self.handle_action(action);
                 }
             }
@@ -133,7 +146,7 @@ impl App {
             }
         }
 
-        restore_terminal()?;
+        restore_terminal(keyboard_enhanced)?;
         Ok(())
     }
 
@@ -145,6 +158,11 @@ impl App {
     fn handle_events(&mut self, event: KeyEvent) -> Action {
         let component = self.stack.last_mut().unwrap();
         component.handle_key_event(event)
+    }
+
+    fn handle_key_release(&mut self, event: KeyEvent) -> Action {
+        let component = self.stack.last_mut().unwrap();
+        component.handle_key_release(event)
     }
 
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {

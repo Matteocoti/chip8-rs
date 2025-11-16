@@ -1,6 +1,6 @@
 use crate::chip8_tui::Chip8TUI;
 use crate::component::{Action, Component, Transition};
-use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};

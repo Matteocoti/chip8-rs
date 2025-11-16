@@ -335,8 +335,11 @@ impl Chip8 {
             }
             // Set I = nnn
             Opcode::LoadI(nnn) => self.state.i = nnn,
-            // Jump to nnn + V0
-            Opcode::JumpV0(nnn) => self.state.pc = nnn + self.state.v[0] as u16,
+            // Jump to nnn + V0; pc_inc must be 0 to prevent the default +2 from being added
+            Opcode::JumpV0(nnn) => {
+                self.state.pc = nnn + self.state.v[0] as u16;
+                pc_inc = 0;
+            }
             // Set Vx = random byte & kk
             Opcode::Rnd(x, kk) => {
                 let u8_rnd = rand::random::<u8>();

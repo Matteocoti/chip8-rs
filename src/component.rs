@@ -1,10 +1,16 @@
-use crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::{Frame, layout::Rect};
 
 /// Component trait that each TUI object has to implement to be rendered to the screen
 pub trait Component {
-    /// handle key events and returns an action for the application handler
+    /// Handle key press/repeat events and return an action for the application handler
     fn handle_key_event(&mut self, key: KeyEvent) -> Action;
+
+    /// Handle key release events. Only needs to be overridden by components that
+    /// track held-key state (e.g. the emulator). Default is a no-op.
+    fn handle_key_release(&mut self, _key: KeyEvent) -> Action {
+        Action::Nope
+    }
 
     /// Render the component's UI to the frame
     fn render(&mut self, f: &mut Frame, area: Rect);

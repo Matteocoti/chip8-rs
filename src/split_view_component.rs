@@ -1,5 +1,5 @@
 use crate::component::{Action, Component, Transition};
-use crossterm::event::KeyCode;
+use ratatui::crossterm::event::KeyCode;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -39,7 +39,7 @@ impl Component for SplitViewComponent {
     ///
     /// - `Tab`: Switches focus to the next pane in the view.
     /// - Other keys: Are delegated to the currently active child pane.
-    fn handle_key_event(&mut self, key: crossterm::event::KeyEvent) -> Action {
+    fn handle_key_event(&mut self, key: ratatui::crossterm::event::KeyEvent) -> Action {
         // The tab key changes the focus of the compoment
         if key.code == KeyCode::Tab {
             self.active_idx = (self.active_idx + 1) % self.panes.len();

@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use ratatui::{
     Frame,

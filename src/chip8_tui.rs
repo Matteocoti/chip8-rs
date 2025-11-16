@@ -7,7 +7,7 @@ use crate::config_manager::ConfigManager;
 use crate::rom_history::RomHistory;
 use crate::settings::{EmulatorSettings, KeyBindings};
 use chrono::Utc;
-use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::{
@@ -15,7 +15,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use std::fs;
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::{HashMap, HashSet}, path::PathBuf};
 
 pub struct Chip8TUI {
     core: Chip8,
@@ -31,6 +31,7 @@ pub struct Chip8TUI {
     start_frequency: u16,
     current_frequency: u16,
     frequency_step: u16,
+    held_keys: HashSet<u8>,
 }
 
 impl Chip8TUI {
@@ -67,6 +68,7 @@ impl Chip8TUI {
             start_frequency: frequency,
             current_frequency: frequency,
             frequency_step,
+            held_keys: HashSet::new(),
         };
 
         tui.load_rom(rom);
@@ -229,8 +231,9 @@ impl Component for Chip8TUI {
             KeyCode::Enter => self.step_mode = !self.step_mode,
             KeyCode::Char('n') => self.step = true,
             KeyCode::Char(key) => {
-                if let Some(chip8_key) = self.keymap.get(&key) {
-                    self.core.press_key(*chip8_key);
+                if let Some(&chip8_key) = self.keymap.get(&key) {
+                    self.held_keys.insert(chip8_key);
+                    self.core.press_key(chip8_key);
                 }
             }
             KeyCode::Esc => {
@@ -238,6 +241,15 @@ impl Component for Chip8TUI {
                 return Action::Transition(Transition::Pop);
             }
             _ => (),
+        }
+        Action::Nope
+    }
+
+    fn handle_key_release(&mut self, event: KeyEvent) -> Action {
+        if let KeyCode::Char(key) = event.code {
+            if let Some(chip8_key) = self.keymap.get(&key) {
+                self.held_keys.remove(chip8_key);
+            }
         }
         Action::Nope
     }
@@ -281,6 +293,10 @@ impl Component for Chip8TUI {
             } else {
                 return Action::Nope;
             }
+        }
+        // Re-apply any held keys before ticking so they persist across frames
+        for &key in &self.held_keys {
+            self.core.press_key(key);
         }
         let emu_result = self.core.tick();
         let mut action = Action::Nope;
