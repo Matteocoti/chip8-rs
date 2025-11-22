@@ -6,6 +6,8 @@ pub enum EmulationError {
     UnknownOpcode(u16),
     InvalidAddress(u16),
     DisplayLimit,
+    StackOverflow,
+    StackUnderflow,
 }
 
 impl fmt::Display for EmulationError {
@@ -20,6 +22,8 @@ impl fmt::Display for EmulationError {
             EmulationError::DisplayLimit => {
                 write!(f, "Display index overflow!")
             }
+            EmulationError::StackOverflow => write!(f, "Stack overflow"),
+            EmulationError::StackUnderflow => write!(f, "Stack underflow"),
         }
     }
 }

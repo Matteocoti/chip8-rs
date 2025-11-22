@@ -253,6 +253,9 @@ impl Chip8 {
             // Sets the program counter to the address at the top of the stack
             // and then substracts 1 from the stack pointer
             Opcode::Return => {
+                if self.state.sp == 0 {
+                    return Err(EmulationError::StackUnderflow);
+                }
                 self.state.sp -= 1;
                 self.state.pc = self.state.stack[self.state.sp as usize];
             }
@@ -264,6 +267,9 @@ impl Chip8 {
             // The interpreter increments the stack pointer, then puts the cuttent pc on the top of
             // the stack. The pc is set to nnn
             Opcode::Call(nnn) => {
+                if self.state.sp as usize >= self.state.stack.len() {
+                    return Err(EmulationError::StackOverflow);
+                }
                 self.state.stack[self.state.sp as usize] = self.state.pc;
                 self.state.sp += 1;
                 self.state.pc = nnn;
