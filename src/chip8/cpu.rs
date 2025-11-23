@@ -618,3 +618,58 @@ impl Default for Chip8 {
         Chip8::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Load a minimal ROM from raw opcodes into a fresh Chip8 instance.
+    fn chip8_with_rom(opcodes: &[u16]) -> Chip8 {
+        let mut cpu = Chip8::new();
+        let rom: Vec<u8> = opcodes
+            .iter()
+            .flat_map(|&op| [(op >> 8) as u8, op as u8])
+            .collect();
+        cpu.load_rom(rom);
+        cpu
+    }
+
+    // ── Stack: Call / Return ────────────────────────────────────────────
+
+    #[test]
+    fn call_pushes_pc_and_jumps() {
+        let mut cpu = chip8_with_rom(&[0x2300]); // CALL 0x300
+        cpu.emulate_cycle().unwrap();
+        assert_eq!(cpu.state.sp, 1);
+        assert_eq!(cpu.state.stack[0], 0x200); // return address saved
+        assert_eq!(cpu.state.pc, 0x300);       // jumped to target
+    }
+
+    #[test]
+    fn return_pops_pc() {
+        // 0x200: CALL 0x204 | 0x202: (padding) | 0x204: RET
+        let mut cpu = chip8_with_rom(&[0x2204, 0x0000, 0x00EE]);
+        cpu.emulate_cycle().unwrap(); // CALL 0x204 → sp=1, pc=0x204
+        cpu.emulate_cycle().unwrap(); // RET        → sp=0, pc=0x202
+        assert_eq!(cpu.state.sp, 0);
+        assert_eq!(cpu.state.pc, 0x202);
+    }
+
+    #[test]
+    fn return_on_empty_stack_is_underflow() {
+        let mut cpu = chip8_with_rom(&[0x00EE]); // RET with empty stack
+        let result = cpu.emulate_cycle();
+        assert!(matches!(result, Err(EmulationError::StackUnderflow)));
+    }
+
+    #[test]
+    fn call_beyond_stack_limit_is_overflow() {
+        // CALL 0x200 calls itself, filling all 16 stack slots
+        let mut cpu = chip8_with_rom(&[0x2200]);
+        for _ in 0..16 {
+            cpu.emulate_cycle().unwrap();
+        }
+        let result = cpu.emulate_cycle();
+        assert!(matches!(result, Err(EmulationError::StackOverflow)));
+    }
+}
