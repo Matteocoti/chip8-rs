@@ -176,3 +176,69 @@ impl Component for KeyBindings {
         Action::Nope
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_has_16_keys() {
+        assert_eq!(KeyBindings::default().get_keyboard().len(), 16);
+    }
+
+    #[test]
+    fn default_keyboard_full_mapping() {
+        let expected: Vec<char> = vec![
+            '1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v',
+        ];
+        assert_eq!(KeyBindings::default().get_keyboard(), expected.as_slice());
+    }
+
+    #[test]
+    fn editing_index_starts_none() {
+        assert!(KeyBindings::default().editing_index.is_none());
+    }
+
+    #[test]
+    fn next_advances_selection() {
+        let mut kb = KeyBindings::default();
+        kb.state.select(Some(0));
+        kb.next();
+        assert_eq!(kb.state.selected(), Some(1));
+    }
+
+    #[test]
+    fn next_wraps_from_last_to_first() {
+        let mut kb = KeyBindings::default();
+        kb.state.select(Some(15));
+        kb.next();
+        assert_eq!(kb.state.selected(), Some(0));
+    }
+
+    #[test]
+    fn previous_wraps_from_first_to_last() {
+        let mut kb = KeyBindings::default();
+        kb.state.select(Some(0));
+        kb.previous();
+        assert_eq!(kb.state.selected(), Some(15));
+    }
+
+    #[test]
+    fn previous_advances_backward() {
+        let mut kb = KeyBindings::default();
+        kb.state.select(Some(5));
+        kb.previous();
+        assert_eq!(kb.state.selected(), Some(4));
+    }
+
+    #[test]
+    fn save_and_load_roundtrip_preserves_mapping() {
+        let path = std::env::temp_dir().join("chip8_test_key_bindings.toml");
+        let kb = KeyBindings::default();
+        kb.save_to_file(&path).unwrap();
+
+        let loaded = KeyBindings::load(&path);
+        assert_eq!(loaded.get_keyboard(), kb.get_keyboard());
+        let _ = std::fs::remove_file(&path);
+    }
+}

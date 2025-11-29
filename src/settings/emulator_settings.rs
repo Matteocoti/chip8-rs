@@ -179,3 +179,66 @@ impl Component for EmulatorSettings {
         Action::Nope
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_frequency_is_500() {
+        assert_eq!(EmulatorSettings::default().get_frequency(), 500);
+    }
+
+    #[test]
+    fn default_max_delta_time_is_30() {
+        assert_eq!(EmulatorSettings::default().get_max_delta_time(), 30);
+    }
+
+    #[test]
+    fn increment_frequency_item_increases_frequency() {
+        let mut s = EmulatorSettings::default();
+        s.state.select(Some(0)); // frequency item has step=5
+        s.increment_current_value();
+        assert_eq!(s.get_frequency(), 505);
+    }
+
+    #[test]
+    fn decrement_frequency_item_decreases_frequency() {
+        let mut s = EmulatorSettings::default();
+        s.state.select(Some(0));
+        s.decrement_current_value();
+        assert_eq!(s.get_frequency(), 495);
+    }
+
+    #[test]
+    fn increment_max_delta_time_item_increases_it() {
+        let mut s = EmulatorSettings::default();
+        s.state.select(Some(1)); // max delta time item has step=1
+        s.increment_current_value();
+        assert_eq!(s.get_max_delta_time(), 31);
+    }
+
+    #[test]
+    fn next_advances_selection() {
+        let mut s = EmulatorSettings::default();
+        s.state.select(Some(0));
+        s.next();
+        assert_eq!(s.state.selected(), Some(1));
+    }
+
+    #[test]
+    fn next_wraps_from_last_to_first() {
+        let mut s = EmulatorSettings::default();
+        s.state.select(Some(1)); // last of 2 items
+        s.next();
+        assert_eq!(s.state.selected(), Some(0));
+    }
+
+    #[test]
+    fn previous_wraps_from_first_to_last() {
+        let mut s = EmulatorSettings::default();
+        s.state.select(Some(0));
+        s.previous();
+        assert_eq!(s.state.selected(), Some(1));
+    }
+}

@@ -74,3 +74,80 @@ impl Chip8Memory {
         self.0 = [0; 4096];
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_is_all_zeros() {
+        let mem = Chip8Memory::default();
+        assert!(mem.0.iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn size_is_4096() {
+        assert_eq!(Chip8Memory::default().size(), 4096);
+    }
+
+    #[test]
+    fn load_data_and_read_back() {
+        let mut mem = Chip8Memory::default();
+        mem.load_data(0x200, &[0xAB, 0xCD, 0xEF], 3);
+        assert_eq!(mem.read_byte(0x200).unwrap(), 0xAB);
+        assert_eq!(mem.read_byte(0x201).unwrap(), 0xCD);
+        assert_eq!(mem.read_byte(0x202).unwrap(), 0xEF);
+    }
+
+    #[test]
+    fn read_byte_at_last_valid_address() {
+        let mut mem = Chip8Memory::default();
+        mem.load_data(4095, &[0xFF], 1);
+        assert_eq!(mem.read_byte(4095).unwrap(), 0xFF);
+    }
+
+    #[test]
+    fn read_byte_out_of_bounds_returns_error() {
+        assert!(Chip8Memory::default().read_byte(4096).is_err());
+    }
+
+    #[test]
+    fn read_word_returns_big_endian() {
+        let mut mem = Chip8Memory::default();
+        mem.load_data(0x200, &[0x12, 0x34], 2);
+        assert_eq!(mem.read_word(0x200).unwrap(), 0x1234);
+    }
+
+    #[test]
+    fn read_word_at_last_valid_address() {
+        let mut mem = Chip8Memory::default();
+        mem.load_data(4094, &[0xAB, 0xCD], 2);
+        assert_eq!(mem.read_word(4094).unwrap(), 0xABCD);
+    }
+
+    #[test]
+    fn read_word_spanning_past_end_returns_error() {
+        // address 4095: only 1 byte remains, read_word needs 2
+        assert!(Chip8Memory::default().read_word(4095).is_err());
+    }
+
+    #[test]
+    fn set_byte_and_read_back() {
+        let mut mem = Chip8Memory::default();
+        mem.set_byte(0x300, 0x42).unwrap();
+        assert_eq!(mem.read_byte(0x300).unwrap(), 0x42);
+    }
+
+    #[test]
+    fn set_byte_out_of_bounds_returns_error() {
+        assert!(Chip8Memory::default().set_byte(4096, 0xFF).is_err());
+    }
+
+    #[test]
+    fn clear_zeroes_all_memory() {
+        let mut mem = Chip8Memory::default();
+        mem.load_data(0, &[0xFF; 100], 100);
+        mem.clear();
+        assert!(mem.0.iter().all(|&b| b == 0));
+    }
+}

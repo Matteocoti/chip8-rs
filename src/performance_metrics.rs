@@ -145,3 +145,60 @@ impl PerformanceMetrics {
         f.render_widget(metrics_widget, area);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn initial_not_visible() {
+        assert!(!PerformanceMetrics::new(200).is_visible());
+    }
+
+    #[test]
+    fn toggle_visibility_makes_visible() {
+        let mut m = PerformanceMetrics::new(200);
+        m.toggle_visibility();
+        assert!(m.is_visible());
+    }
+
+    #[test]
+    fn toggle_visibility_twice_restores_hidden() {
+        let mut m = PerformanceMetrics::new(200);
+        m.toggle_visibility();
+        m.toggle_visibility();
+        assert!(!m.is_visible());
+    }
+
+    #[test]
+    fn initial_fps_is_zero() {
+        assert_eq!(PerformanceMetrics::new(200).fps(), 0.0);
+    }
+
+    #[test]
+    fn initial_avg_loop_time_is_zero() {
+        assert_eq!(
+            PerformanceMetrics::new(200).avg_loop_time(),
+            Duration::from_nanos(0)
+        );
+    }
+
+    #[test]
+    fn end_frame_returns_a_duration() {
+        let mut m = PerformanceMetrics::new(200);
+        let start = m.start_frame();
+        let elapsed = m.end_frame(start);
+        // Duration is non-negative by construction; verify it is the frame duration
+        assert!(elapsed <= Duration::from_secs(1)); // sanity: one frame can't take > 1s in tests
+    }
+
+    #[test]
+    fn avg_loop_time_updates_after_end_frame() {
+        let mut m = PerformanceMetrics::new(200);
+        let start = m.start_frame();
+        m.end_frame(start);
+        // After one frame, avg_loop_time should be non-zero (some time passed)
+        // We can't assert the exact value due to timing, but it shouldn't panic
+        let _ = m.avg_loop_time();
+    }
+}

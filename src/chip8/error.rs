@@ -29,3 +29,48 @@ impl fmt::Display for EmulationError {
 }
 
 impl Error for EmulationError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_unknown_opcode() {
+        assert_eq!(
+            format!("{}", EmulationError::UnknownOpcode(0xABCD)),
+            "Unknown opcode executed: 0xABCD"
+        );
+    }
+
+    #[test]
+    fn display_invalid_address() {
+        assert_eq!(
+            format!("{}", EmulationError::InvalidAddress(0x1234)),
+            "Invalid Address: 0x1234"
+        );
+    }
+
+    #[test]
+    fn display_display_limit() {
+        assert_eq!(
+            format!("{}", EmulationError::DisplayLimit),
+            "Display index overflow!"
+        );
+    }
+
+    #[test]
+    fn display_stack_overflow() {
+        assert_eq!(
+            format!("{}", EmulationError::StackOverflow),
+            "Stack overflow"
+        );
+    }
+
+    #[test]
+    fn display_stack_underflow() {
+        assert_eq!(
+            format!("{}", EmulationError::StackUnderflow),
+            "Stack underflow"
+        );
+    }
+}

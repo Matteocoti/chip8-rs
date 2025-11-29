@@ -153,3 +153,88 @@ impl Component for RomHistory {
         Action::Nope
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rom(path: &str) -> PathBuf {
+        PathBuf::from(path)
+    }
+
+    #[test]
+    fn register_rom_adds_entry() {
+        let mut history = RomHistory::default();
+        history.register_rom(rom("/roms/pong.ch8"));
+        assert_eq!(history.roms.len(), 1);
+        assert_eq!(history.roms[0].name, "pong.ch8");
+    }
+
+    #[test]
+    fn register_rom_deduplicates() {
+        let mut history = RomHistory::default();
+        history.register_rom(rom("/roms/pong.ch8"));
+        history.register_rom(rom("/roms/pong.ch8"));
+        assert_eq!(history.roms.len(), 1);
+    }
+
+    #[test]
+    fn register_different_roms_adds_both() {
+        let mut history = RomHistory::default();
+        history.register_rom(rom("/roms/pong.ch8"));
+        history.register_rom(rom("/roms/tetris.ch8"));
+        assert_eq!(history.roms.len(), 2);
+    }
+
+    #[test]
+    fn next_advances_selection() {
+        let mut history = RomHistory::default();
+        history.register_rom(rom("/roms/pong.ch8"));
+        history.register_rom(rom("/roms/tetris.ch8"));
+        history.state.select(Some(0));
+        history.next();
+        assert_eq!(history.state.selected(), Some(1));
+    }
+
+    #[test]
+    fn next_wraps_from_last_to_first() {
+        let mut history = RomHistory::default();
+        history.register_rom(rom("/roms/pong.ch8"));
+        history.register_rom(rom("/roms/tetris.ch8"));
+        history.state.select(Some(1));
+        history.next();
+        assert_eq!(history.state.selected(), Some(0));
+    }
+
+    #[test]
+    fn previous_wraps_from_first_to_last() {
+        let mut history = RomHistory::default();
+        history.register_rom(rom("/roms/pong.ch8"));
+        history.register_rom(rom("/roms/tetris.ch8"));
+        history.state.select(Some(0));
+        history.previous();
+        assert_eq!(history.state.selected(), Some(1));
+    }
+
+    #[test]
+    fn save_and_load_roundtrip() {
+        let path = std::env::temp_dir().join("chip8_test_rom_history.toml");
+        let mut history = RomHistory::default();
+        history.register_rom(rom("/roms/pong.ch8"));
+        history.register_rom(rom("/roms/tetris.ch8"));
+        history.save_to_file(&path).unwrap();
+
+        let loaded = RomHistory::load(&path);
+        assert_eq!(loaded.roms.len(), 2);
+        assert_eq!(loaded.roms[0].name, "pong.ch8");
+        assert_eq!(loaded.roms[1].name, "tetris.ch8");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn load_from_nonexistent_file_returns_default() {
+        let path = PathBuf::from("/nonexistent/path/chip8_history.toml");
+        let history = RomHistory::load(&path);
+        assert_eq!(history.roms.len(), 0);
+    }
+}
