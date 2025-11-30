@@ -80,7 +80,7 @@ impl RomHistory {
         ])
     }
 
-    fn load_to_file(path: &PathBuf) -> io::Result<Self> {
+    fn load_from_file(path: &PathBuf) -> io::Result<Self> {
         let content = fs::read_to_string(path)?;
         let history = toml::from_str(&content).expect("Failed to deserialize ROM history");
         Ok(history)
@@ -92,7 +92,7 @@ impl RomHistory {
     }
 
     pub fn load(path: &PathBuf) -> Self {
-        if let Ok(mut history) = Self::load_to_file(path) {
+        if let Ok(mut history) = Self::load_from_file(path) {
             history.state = ListState::default();
             history.state.select(Some(0));
             history.file_path = path.clone();
