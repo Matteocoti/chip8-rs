@@ -9,6 +9,7 @@ pub struct ConfigManager {
     pub emulator_settings_path: PathBuf,
     pub key_bindings_path: PathBuf,
     pub rom_history_path: PathBuf,
+    pub log_path: PathBuf,
 }
 
 impl ConfigManager {
@@ -18,12 +19,14 @@ impl ConfigManager {
         let emulator_settings_path = base_path.join("emulator_settings.toml");
         let key_bindings_path = base_path.join("key_bindings.toml");
         let rom_history_path = base_path.join("rom_history.toml");
+        let log_path = base_path.join("chip8.log");
 
         Self {
             base_path,
             emulator_settings_path,
             key_bindings_path,
             rom_history_path,
+            log_path,
         }
     }
 
