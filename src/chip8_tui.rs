@@ -1,5 +1,4 @@
 use crate::audio::AudioHandler;
-use crate::chip8::cpu::EmulationEvent;
 use crate::chip8::*;
 use crate::component::{Action, Component, Transition};
 use crate::config_file::get_rom_saved_data_path;

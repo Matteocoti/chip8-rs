@@ -9,6 +9,7 @@ pub mod opcodes;
 
 // Re-export main types
 pub use cpu::Chip8;
+pub use cpu::EmulationEvent;
 pub use display::Chip8Display;
 pub use error::EmulationError;
 pub use input::Chip8Keyboard;
