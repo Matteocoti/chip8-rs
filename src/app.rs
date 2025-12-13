@@ -10,10 +10,13 @@ use ratatui::crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, supports_keyboard_enhancement},
 };
 use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::style::{Color, Style};
+use ratatui::widgets::{Clear, Paragraph};
 use std::fs::{File, OpenOptions};
-use std::io::stdout;
-use std::time::Duration;
+use std::io::{stdout, Write};
+use std::time::{Duration, Instant};
 
+const NOTIFICATION_DURATION: Duration = Duration::from_secs(5);
 pub struct App {
     should_quit: bool,
     stack: Vec<Box<dyn Component>>,
@@ -22,6 +25,7 @@ pub struct App {
     metrics: PerformanceMetrics, // Performance metrics tracker
     #[allow(dead_code)]
     config: ConfigManager, // Kept for future use
+    notification: Option<(String, Instant)>,
 }
 
 fn init_tui_terminal() -> color_eyre::Result<(Terminal<CrosstermBackend<std::io::Stdout>>, bool)> {
@@ -60,6 +64,7 @@ impl App {
             log: logf,
             metrics: PerformanceMetrics::new(200),
             config,
+            notification: None,
         }
     }
 
@@ -69,6 +74,12 @@ impl App {
         match action {
             Action::Quit => self.should_quit = true,
             Action::Render => needs_render = true,
+            Action::Notify(msg) => {
+                let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S");
+                let _ = writeln!(self.log, "[{timestamp}] {msg}");
+                self.notification = Some((msg, Instant::now()));
+                needs_render = true;
+            }
             Action::Transition(transition) => match transition {
                 crate::component::Transition::Pop => {
                     let component = self.stack.pop();
@@ -135,11 +146,17 @@ impl App {
             if self.should_quit {
                 break 'main_loop;
             }
-            let update_action = self.update();
-            needs_redraw |= self.handle_action(update_action);
-            if needs_redraw {
-                self.render(&mut terminal);
+
+            // Expire notification after 5 seconds
+            if let Some((_, when)) = &self.notification {
+                if when.elapsed() >= NOTIFICATION_DURATION {
+                    self.notification = None;
+                }
             }
+
+            let update_action = self.update();
+            self.handle_action(update_action);
+            self.render(&mut terminal);
             let elapsed = self.metrics.end_frame(frame_start);
             if elapsed < target_frame_duration {
                 std::thread::sleep(target_frame_duration - elapsed);
@@ -185,6 +202,28 @@ impl App {
                     )
                     .split(f.area())[1];
                 self.metrics.render(f, metrics_area);
+            }
+
+            // Overlay the notification if active and not expired
+            if let Some((ref msg, when)) = self.notification {
+                if when.elapsed() < NOTIFICATION_DURATION {
+                    let notif_area = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints(
+                            [
+                                Constraint::Min(0),
+                                Constraint::Length(1),
+                            ]
+                            .as_ref(),
+                        )
+                        .split(area)[1];
+                    f.render_widget(Clear, notif_area);
+                    f.render_widget(
+                        Paragraph::new(msg.as_str())
+                            .style(Style::default().bg(Color::Yellow).fg(Color::Black)),
+                        notif_area,
+                    );
+                }
             }
         });
     }

@@ -49,4 +49,6 @@ pub enum Action {
     Transition(Transition),
     /// Quit the application
     Quit,
+    /// Show a notification message in the overlay and write it to the log
+    Notify(String),
 }

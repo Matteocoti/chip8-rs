@@ -31,6 +31,7 @@ pub struct Chip8TUI {
     current_frequency: u16,
     frequency_step: u16,
     held_keys: HashSet<u8>,
+    pending_notification: Option<String>,
 }
 
 impl Chip8TUI {
@@ -68,9 +69,12 @@ impl Chip8TUI {
             current_frequency: frequency,
             frequency_step,
             held_keys: HashSet::new(),
+            pending_notification: None,
         };
 
-        tui.load_rom(rom);
+        if let Err(msg) = tui.load_rom(rom) {
+            tui.pending_notification = Some(msg);
+        }
 
         tui
     }
@@ -132,9 +136,12 @@ impl Chip8TUI {
     }
 
     fn quick_save_state(&mut self) -> Action {
-        let ts = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let ts = Utc::now().format("%Y-%m-%dT%H-%M-%S").to_string();
         let file_name = format!("{}_{}.sav", &self.rom_name, ts);
-        self.save_state(&file_name)
+        match self.save_state(&file_name) {
+            Action::Render => Action::Notify(format!("Saved: {file_name}")),
+            _ => Action::Notify("Save failed".to_string()),
+        }
     }
 
     fn find_latest_save_file(&self, rom_name: &str) -> Option<PathBuf> {
@@ -172,22 +179,25 @@ impl Chip8TUI {
 
         if let Some(data) = saved_data {
             match self.core.load_state(&data) {
-                Ok(_) => {
-                    self.step_mode = true;
-                    Action::Render
-                }
-                Err(_) => Action::Nope,
+                Ok(_) => Action::Notify(format!(
+                    "Loaded: {}",
+                    data.file_name().unwrap_or_default().to_string_lossy()
+                )),
+                Err(e) => Action::Notify(format!("Load failed: {e}")),
             }
         } else {
-            Action::Nope
+            Action::Notify("No save file found".to_string())
         }
     }
 
-    fn reset_rom(&mut self) {
+    fn reset_rom(&mut self) -> Action {
         if let Some(rom_path) = self.rom.clone() {
             self.core.reset();
-            let _ = self.load_rom(&rom_path);
+            if let Err(msg) = self.load_rom(&rom_path) {
+                return Action::Notify(msg);
+            }
         }
+        Action::Nope
     }
 
     fn inc_frequency(&mut self) {
@@ -215,6 +225,9 @@ impl Component for Chip8TUI {
             let mut history = RomHistory::load(&config.rom_history_path);
             history.register_rom(rom_path.clone());
             let _ = history.save_to_file(&config.rom_history_path);
+        }
+        if let Some(msg) = self.pending_notification.take() {
+            return Action::Notify(msg);
         }
         Action::Nope
     }
@@ -297,22 +310,24 @@ impl Component for Chip8TUI {
         for &key in &self.held_keys {
             self.core.press_key(key);
         }
-        let emu_result = self.core.tick();
         let mut action = Action::Nope;
-        if let Ok(events) = emu_result {
-            for evt in events {
-                match evt {
-                    EmulationEvent::ScreenUpdated => {
-                        action = Action::Render;
-                    }
-                    EmulationEvent::SoundStarted => {
-                        self.play_sound();
-                    }
-                    EmulationEvent::SoundStopped => {
-                        self.stop_sound();
+        match self.core.tick() {
+            Ok(events) => {
+                for evt in events {
+                    match evt {
+                        EmulationEvent::ScreenUpdated => {
+                            action = Action::Render;
+                        }
+                        EmulationEvent::SoundStarted => {
+                            self.play_sound();
+                        }
+                        EmulationEvent::SoundStopped => {
+                            self.stop_sound();
+                        }
                     }
                 }
             }
+            Err(e) => return Action::Notify(format!("Emulation error: {e}")),
         }
         action
     }
