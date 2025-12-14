@@ -78,6 +78,20 @@ impl fmt::Display for Chip8State {
     }
 }
 
+/// Lightweight snapshot of CPU registers for the debugger panel.
+/// Does NOT include memory or display to avoid expensive clones.
+pub struct DebugInfo {
+    pub pc: u16,
+    pub opcode: u16,
+    pub i: u16,
+    pub sp: u8,
+    pub v: [u8; 16],
+    pub delay_tmr: u8,
+    pub sound_tmr: u8,
+    pub stack: [u16; 16],
+    pub waiting_for_key: bool,
+}
+
 impl Default for Chip8State {
     fn default() -> Self {
         Self {
@@ -147,7 +161,6 @@ impl Chip8 {
         let max_size = self.state.memory.size() - 0x200;
         // Check if the ROM fits in the emulator memory
         if rom_size > max_size {
-            println!("Error: ROM data size too big!");
             return false;
         }
 
@@ -553,6 +566,20 @@ impl Chip8 {
         self.state.display.get_frame_buffer()
     }
 
+    pub fn get_debug_info(&self) -> DebugInfo {
+        DebugInfo {
+            pc: self.state.pc,
+            opcode: self.state.opcode,
+            i: self.state.i,
+            sp: self.state.sp,
+            v: self.state.v,
+            delay_tmr: self.state.delay_tmr,
+            sound_tmr: self.state.sound_tmr,
+            stack: self.state.stack,
+            waiting_for_key: self.state.waiting_for_key,
+        }
+    }
+
     pub fn press_key(&mut self, key: u8) {
         self.state.keyboard.set_key(key, true);
     }
@@ -578,10 +605,6 @@ impl Chip8 {
         self.last_tick_time = Instant::now();
 
         Ok(())
-    }
-
-    pub fn get_state(&self) -> Chip8State {
-        self.state.clone()
     }
 
     fn load_fontset(&mut self) {
