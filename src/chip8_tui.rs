@@ -8,11 +8,10 @@ use crate::settings::{EmulatorSettings, KeyBindings};
 use chrono::Utc;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
-use ratatui::layout::Rect;
-use ratatui::{
-    layout::{Constraint, Direction, Layout},
-    widgets::{Block, Borders, Paragraph},
-};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Color, Style};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Borders, Paragraph};
 use std::fs;
 use std::{collections::{HashMap, HashSet}, path::PathBuf};
 
@@ -90,17 +89,20 @@ impl Chip8TUI {
         }
     }
 
-    pub fn load_rom(&mut self, rom_path: &PathBuf) -> bool {
-        let rom_rd_res = std::fs::read(&rom_path);
+    pub fn load_rom(&mut self, rom_path: &PathBuf) -> Result<(), String> {
+        let rom_data = std::fs::read(rom_path)
+            .map_err(|e| format!("Cannot read ROM '{}': {e}", rom_path.display()))?;
 
-        if let Ok(rom_data) = rom_rd_res {
-            if self.core.load_rom(rom_data) {
-                self.rom_name = rom_path.file_name().unwrap().to_string_lossy().into_owned();
-                self.rom = Some(rom_path.clone());
-                return true;
-            }
+        if !self.core.load_rom(rom_data) {
+            return Err(format!(
+                "ROM '{}' is too large to fit in memory",
+                rom_path.display()
+            ));
         }
-        false
+
+        self.rom_name = rom_path.file_name().unwrap().to_string_lossy().into_owned();
+        self.rom = Some(rom_path.clone());
+        Ok(())
     }
 
     // pub fn config(&mut self, settings: &Settings) {
@@ -237,7 +239,7 @@ impl Component for Chip8TUI {
             KeyCode::F(1) => self.inc_frequency(),
             KeyCode::F(2) => self.dec_frequency(),
             KeyCode::F(3) => self.reload_frequency(),
-            KeyCode::F(4) => self.reset_rom(),
+            KeyCode::F(4) => return self.reset_rom(),
             KeyCode::F(5) => return self.quick_save_state(),
             KeyCode::F(6) => return self.quick_load_state(),
             KeyCode::Enter => self.step_mode = !self.step_mode,
@@ -267,35 +269,96 @@ impl Component for Chip8TUI {
     }
 
     fn render(&mut self, f: &mut Frame, area: Rect) {
-        self.display_string_cache.clear();
-
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Ratio(3, 5), Constraint::Ratio(2, 5)].as_ref())
+            .constraints([Constraint::Min(64), Constraint::Length(28)])
             .split(area);
 
-        let frame_data = self.core.get_frame_buffer();
+        let game_area = chunks[0];
+        let debug_area = chunks[1];
 
-        let mut rows = frame_data.chunks_exact(64).peekable();
-        while let Some(row_slice) = rows.next() {
-            for &pixel_on in row_slice {
-                self.display_string_cache
-                    .push(if pixel_on { '█' } else { ' ' });
-            }
-            if rows.peek().is_some() {
-                self.display_string_cache.push('\n');
+        // --- Game display ---
+        self.display_string_cache.clear();
+        let scale_x = ((game_area.width as usize) / 64).max(1);
+        let scale_y = ((game_area.height as usize) / 32).max(1);
+        let frame_data = self.core.get_frame_buffer();
+        let mut first = true;
+        for row_slice in frame_data.chunks_exact(64) {
+            for _ in 0..scale_y {
+                if !first {
+                    self.display_string_cache.push('\n');
+                }
+                first = false;
+                for &pixel_on in row_slice {
+                    let ch = if pixel_on { '█' } else { ' ' };
+                    for _ in 0..scale_x {
+                        self.display_string_cache.push(ch);
+                    }
+                }
             }
         }
-        let display = Paragraph::new(self.display_string_cache.as_str())
-            .block(Block::default().title("Display").borders(Borders::ALL));
+        f.render_widget(Paragraph::new(self.display_string_cache.as_str()), game_area);
 
-        f.render_widget(display, chunks[0]);
+        // --- Debugger panel ---
+        let dbg = self.core.get_debug_info();
+        let val_style = Style::default().fg(Color::Yellow);
+        let key_style = Style::default().fg(Color::Cyan);
 
-        let state_string = self.core.get_state().to_string();
+        let mut lines: Vec<Line> = vec![
+            Line::from(vec![
+                Span::styled("PC: ", key_style),
+                Span::styled(format!("{:04X}", dbg.pc), val_style),
+                Span::raw("  "),
+                Span::styled("OP: ", key_style),
+                Span::styled(format!("{:04X}", dbg.opcode), val_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" I: ", key_style),
+                Span::styled(format!("{:04X}", dbg.i), val_style),
+                Span::raw("  "),
+                Span::styled("SP: ", key_style),
+                Span::styled(format!("{:02X}", dbg.sp), val_style),
+            ]),
+            Line::from(vec![
+                Span::styled("DT: ", key_style),
+                Span::styled(format!("{:02}", dbg.delay_tmr), val_style),
+                Span::raw("  "),
+                Span::styled("ST: ", key_style),
+                Span::styled(format!("{:02}", dbg.sound_tmr), val_style),
+            ]),
+        ];
+        if dbg.waiting_for_key {
+            lines.push(Line::from(Span::styled("WAIT KEY", Style::default().fg(Color::Red))));
+        }
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled("Registers", key_style)));
+        for i in 0..16 {
+            lines.push(Line::from(vec![
+                Span::styled(format!("V{:X}: ", i), key_style),
+                Span::styled(format!("{:02X}", dbg.v[i]), val_style),
+                Span::raw(format!(" ({})", dbg.v[i])),
+            ]));
+        }
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled("Stack", key_style)));
+        for i in 0..dbg.sp as usize {
+            lines.push(Line::from(vec![
+                Span::styled(format!(" {}: ", i), key_style),
+                Span::styled(format!("{:04X}", dbg.stack[i]), val_style),
+            ]));
+        }
 
-        let paragraph = Paragraph::new(state_string);
+        let freq_line = Line::from(vec![
+            Span::styled("Hz: ", key_style),
+            Span::styled(format!("{}", self.current_frequency), val_style),
+        ]);
+        lines.push(Line::from(""));
+        lines.push(freq_line);
 
-        f.render_widget(paragraph, chunks[1]);
+        f.render_widget(
+            Paragraph::new(lines).block(Block::default().borders(Borders::LEFT).title("Debug")),
+            debug_area,
+        );
     }
 
     fn update(&mut self) -> Action {
