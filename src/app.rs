@@ -17,14 +17,14 @@ use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
 
 const NOTIFICATION_DURATION: Duration = Duration::from_secs(5);
+
 pub struct App {
     should_quit: bool,
     stack: Vec<Box<dyn Component>>,
+    log: File,
+    metrics: PerformanceMetrics,
     #[allow(dead_code)]
-    log: File, // Log file (kept open; write to it in future)
-    metrics: PerformanceMetrics, // Performance metrics tracker
-    #[allow(dead_code)]
-    config: ConfigManager, // Kept for future use
+    config: ConfigManager,
     notification: Option<(String, Instant)>,
 }
 
@@ -51,10 +51,14 @@ fn restore_terminal(keyboard_enhanced: bool) -> color_eyre::Result<()> {
 
 impl App {
     pub fn new() -> Self {
-        let mut options = OpenOptions::new();
-        let logf = options.append(true).create(true).open("foo.txt").unwrap();
-
         let config = ConfigManager::new();
+
+        let mut options = OpenOptions::new();
+        let logf = options
+            .append(true)
+            .create(true)
+            .open(&config.log_path)
+            .unwrap();
 
         let main_menu = Box::new(MainMenu::new(config.clone()));
 
@@ -84,24 +88,28 @@ impl App {
                 crate::component::Transition::Pop => {
                     let component = self.stack.pop();
                     if let Some(mut pane) = component {
-                        pane.on_exit();
+                        let action = pane.on_exit();
+                        self.handle_action(action);
                     }
                     needs_render = true;
                 }
                 crate::component::Transition::Push(mut component) => {
-                    component.on_entry();
+                    let action = component.on_entry();
                     self.stack.push(component);
+                    self.handle_action(action);
                     needs_render = true;
                 }
                 crate::component::Transition::Switch(mut component) => {
                     if !self.stack.is_empty() {
                         let component = self.stack.pop();
                         if let Some(mut pane) = component {
-                            pane.on_exit();
+                            let action = pane.on_exit();
+                            self.handle_action(action);
                         }
                     }
-                    component.on_entry();
+                    let action = component.on_entry();
                     self.stack.push(component);
+                    self.handle_action(action);
                     needs_render = true;
                 }
             },
@@ -120,7 +128,6 @@ impl App {
 
         'main_loop: loop {
             let frame_start = self.metrics.start_frame();
-            let mut needs_redraw = false;
             while poll(Duration::ZERO)? {
                 if let Ok(Event::Key(key_event)) = read() {
                     match key_event.code {
@@ -139,7 +146,7 @@ impl App {
                     } else {
                         self.handle_events(key_event)
                     };
-                    needs_redraw |= self.handle_action(action);
+                    self.handle_action(action);
                 }
             }
 
@@ -188,15 +195,14 @@ impl App {
             let area = f.area();
             component.render(f, area);
 
-            // After the mode has rendered, overlay the performance metrics if visible
+            // Overlay the performance metrics if visible
             if self.metrics.is_visible() {
-                // Create a small area at the bottom of the screen for metrics
                 let metrics_area = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints(
                         [
                             Constraint::Min(0),
-                            Constraint::Length(1), // Just a single line
+                            Constraint::Length(1),
                         ]
                         .as_ref(),
                     )
