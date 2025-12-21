@@ -113,7 +113,7 @@ impl EmulatorSettings {
 impl Default for EmulatorSettings {
     fn default() -> Self {
         let items: Vec<Box<dyn SettingItem>> = vec![
-            Box::new(NumericSetting::new("Frequency", 500, 5, "Hz")),
+            Box::new(NumericSetting::new("Frequency", 1000, 5, "Hz")),
             Box::new(NumericSetting::new("Max Delta Time", 30, 1, "ms")),
         ];
 
@@ -185,8 +185,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_frequency_is_500() {
-        assert_eq!(EmulatorSettings::default().get_frequency(), 500);
+    fn default_frequency_is_1000() {
+        assert_eq!(EmulatorSettings::default().get_frequency(), 1000);
     }
 
     #[test]
@@ -199,7 +199,7 @@ mod tests {
         let mut s = EmulatorSettings::default();
         s.state.select(Some(0)); // frequency item has step=5
         s.increment_current_value();
-        assert_eq!(s.get_frequency(), 505);
+        assert_eq!(s.get_frequency(), 1005);
     }
 
     #[test]
@@ -207,7 +207,7 @@ mod tests {
         let mut s = EmulatorSettings::default();
         s.state.select(Some(0));
         s.decrement_current_value();
-        assert_eq!(s.get_frequency(), 495);
+        assert_eq!(s.get_frequency(), 995);
     }
 
     #[test]
