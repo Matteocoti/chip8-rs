@@ -543,19 +543,47 @@ impl Chip8 {
         if let Some(evt) = self.update_timers(delta) {
             vec_events.push(evt);
         }
-        // Emulate a cycle
-        let cycles_to_emulate = (self.frequency as f32 * delta.as_secs_f32()).round() as u32;
-        for _ in 0..cycles_to_emulate {
-            // Emulate a cycle
-            if let Ok(cycle_evt) = self.emulate_cycle() {
-                if let Some(evt) = cycle_evt {
+        let base_cycles = (self.frequency as f32 * delta.as_secs_f32()).round() as u32;
+
+        // After running base_cycles, continue if a sprite draw sequence is in progress.
+        // This ensures erase+redraw pairs complete within a single rendered frame,
+        // preventing gradual-flicker artifacts during sprite movement.
+        //
+        // "Quiet" = no DRW for this many cycles → drawing sequence considered done.
+        // Must be > the longest gap between two consecutive DRWs in a routine.
+        // For Space Invaders the erase→redraw gap is ~18 cycles, so 20 is the minimum.
+        const DRAW_QUIET_CYCLES: u32 = 20;
+        // Safety cap: at most base + frequency/5 extra cycles (≈ 200 at 1000 Hz).
+        let max_cycles = base_cycles + (self.frequency as u32 / 5).max(32);
+
+        let mut cycles_run = 0u32;
+        let mut last_drw_cycle: Option<u32> = None;
+
+        loop {
+            if cycles_run >= base_cycles {
+                let drawing_active = last_drw_cycle
+                    .map_or(false, |c| cycles_run.saturating_sub(c) < DRAW_QUIET_CYCLES);
+                if !drawing_active {
+                    break;
+                }
+            }
+            if cycles_run >= max_cycles {
+                break;
+            }
+
+            match self.emulate_cycle() {
+                Ok(Some(evt)) => {
+                    if evt == EmulationEvent::ScreenUpdated {
+                        last_drw_cycle = Some(cycles_run);
+                    }
                     if !vec_events.contains(&evt) {
                         vec_events.push(evt);
                     }
                 }
-            } else {
-                return Err(EmulationError::UnknownOpcode(self.state.opcode));
+                Ok(None) => {}
+                Err(_) => return Err(EmulationError::UnknownOpcode(self.state.opcode)),
             }
+            cycles_run += 1;
         }
 
         self.reset_keyboard();
