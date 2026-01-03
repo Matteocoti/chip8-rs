@@ -430,7 +430,7 @@ impl Chip8 {
                 self.state.sound_tmr = self.state.v[x];
             }
             //  Set I = I + Vx
-            Opcode::AddI(x) => self.state.i += self.state.v[x] as u16,
+            Opcode::AddI(x) => self.state.i = self.state.i.wrapping_add(self.state.v[x] as u16),
             // Set I = location of sprite for digit Vx
             Opcode::SetIReg(x) => self.state.i = self.state.v[x] as u16 * 5,
             // Store BCD representation of Vx in memory locations I, I+1, I+2
