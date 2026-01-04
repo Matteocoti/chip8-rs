@@ -440,10 +440,10 @@ impl Chip8 {
                     .set_byte(self.state.i as usize, self.state.v[x] / 100)?;
                 self.state
                     .memory
-                    .set_byte((self.state.i + 1) as usize, (self.state.v[x] % 100) / 10)?;
+                    .set_byte(self.state.i.wrapping_add(1) as usize, (self.state.v[x] % 100) / 10)?;
                 self.state
                     .memory
-                    .set_byte((self.state.i + 2) as usize, self.state.v[x] % 10)?;
+                    .set_byte(self.state.i.wrapping_add(2) as usize, self.state.v[x] % 10)?;
             }
             // Store registers V0 through Vx in memory starting at location I
             Opcode::StoreV0(x) => {
