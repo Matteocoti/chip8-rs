@@ -25,6 +25,9 @@ pub struct RomHistory {
 
 impl RomHistory {
     fn next(&mut self) {
+        if self.roms.is_empty() {
+            return;
+        }
         let i = match self.state.selected() {
             Some(i) => {
                 if i >= self.roms.len() - 1 {
@@ -39,6 +42,9 @@ impl RomHistory {
     }
 
     fn previous(&mut self) {
+        if self.roms.is_empty() {
+            return;
+        }
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
