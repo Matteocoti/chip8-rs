@@ -28,9 +28,11 @@ impl<'de> Deserialize<'de> for Chip8Memory {
         D: Deserializer<'de>,
     {
         let bytes: Vec<u8> = Vec::deserialize(deserializer)?;
-        let bytes_array = bytes.try_into();
+        let bytes_array: [u8; 4096] = bytes
+            .try_into()
+            .map_err(|_| serde::de::Error::custom("memory must be exactly 4096 bytes"))?;
 
-        Ok(Self(bytes_array.unwrap()))
+        Ok(Self(bytes_array))
     }
 }
 
