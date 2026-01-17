@@ -34,7 +34,8 @@ impl EmulatorSettings {
     // Load the settings from a TOML file.
     fn load_from_file(path: &PathBuf) -> io::Result<Self> {
         let content = fs::read_to_string(path)?;
-        let settings: Self = toml::from_str(&content).expect("Failed to deserialize settings");
+        let settings: Self = toml::from_str(&content)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(settings)
     }
 
