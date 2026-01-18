@@ -152,7 +152,7 @@ impl Component for KeyBindings {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title("Impostazioni Tastiera"),
+                    .title("Keyboard Settings"),
             )
             .highlight_style(
                 Style::default()
