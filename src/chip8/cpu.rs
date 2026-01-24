@@ -32,7 +32,7 @@ pub enum EmulationEvent {
 pub struct Chip8State {
     memory: Chip8Memory,     // 4 Kb ram memory
     i: u16,                  // index register
-    v: [u8; 16],             // 16 8-it general purpose register
+    v: [u8; 16],             // 16 8-bit general purpose registers
     pc: u16,                 // program counter
     sp: u8,                  // stack pointer
     delay_tmr: u8,           // delay timer
@@ -47,7 +47,7 @@ pub struct Chip8State {
 
 impl fmt::Display for Chip8State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Scrive i registri principali
+        // Write main registers
         writeln!(
             f,
             "PC: 0x{:04X}  |  I: 0x{:04X}  |  SP: 0x{:02X}",
@@ -264,7 +264,7 @@ impl Chip8 {
                 display_update = true;
             }
             // Sets the program counter to the address at the top of the stack
-            // and then substracts 1 from the stack pointer
+            // and then subtracts 1 from the stack pointer
             Opcode::Return => {
                 if self.state.sp == 0 {
                     return Err(EmulationError::StackUnderflow);
@@ -453,7 +453,7 @@ impl Chip8 {
                         .set_byte((self.state.i as usize) + idx, self.state.v[idx])?;
                 }
             }
-            // Read registers V0 through Vx from memoty starting at location I
+            // Read registers V0 through Vx from memory starting at location I
             Opcode::LoadV0(x) => {
                 for idx in 0..=x {
                     self.state.v[idx] = self.state.memory.read_byte(self.state.i as usize + idx)?;
