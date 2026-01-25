@@ -4,7 +4,6 @@ use crate::chip8::Chip8Keyboard;
 use crate::chip8::opcodes::Opcode;
 use crate::chip8::{Chip8Display, Chip8Memory, EmulationError};
 
-use std::fmt;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 // Fontset declaration -> group of sprites stored
@@ -43,39 +42,6 @@ pub struct Chip8State {
     waiting_for_key: bool,   // Waiting for a key to be pressed
     register_for_key: usize, // Register to which store the pressed key
     opcode: u16,             // Current opcode
-}
-
-impl fmt::Display for Chip8State {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Write main registers
-        writeln!(
-            f,
-            "PC: 0x{:04X}  |  I: 0x{:04X}  |  SP: 0x{:02X}",
-            self.pc, self.i, self.sp
-        )?;
-        writeln!(f, "Opcode: 0x{:04X}", self.opcode)?;
-        writeln!(f, "------------------------------------")?;
-
-        write!(f, "V: ")?;
-        for i in 0..8 {
-            write!(f, "V{:X}:0x{:02X} ", i, self.v[i])?;
-            writeln!(f)?;
-        }
-
-        for i in 8..16 {
-            write!(f, "V{:X}:0x{:02X} ", i, self.v[i])?;
-            writeln!(f)?;
-        }
-        writeln!(f, "------------------------------------")?;
-
-        writeln!(
-            f,
-            "Delay Timer: {} | Sound Timer: {}",
-            self.delay_tmr, self.sound_tmr
-        )?;
-
-        Ok(())
-    }
 }
 
 /// Lightweight snapshot of CPU registers for the debugger panel.
