@@ -105,20 +105,6 @@ impl Chip8TUI {
         Ok(())
     }
 
-    // pub fn config(&mut self, settings: &Settings) {
-    //     self.keymap.clear();
-    //     self.max_delta_time = settings.get_max_delta_time();
-    //     self.start_frequency = settings.get_frequency();
-    //     self.current_frequency = self.start_frequency;
-    //     self.frequency_step = self.start_frequency / 4;
-    //     self.core.set_frequency(self.current_frequency);
-    //     self.core.set_max_delta_time(self.max_delta_time);
-    //     let keymap = settings.get_key_mappings();
-    //
-    //     for (chip8_key, key_char) in keymap.iter().enumerate() {
-    //         self.keymap.insert(*key_char, chip8_key as u8);
-    //     }
-    // }
 
     fn save_state(&mut self, file_name: &str) -> Action {
         let name = self.rom_name.as_ref();
