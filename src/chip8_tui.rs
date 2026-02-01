@@ -20,8 +20,6 @@ pub struct Chip8TUI {
     rom: Option<PathBuf>,
     rom_name: String,
     keymap: HashMap<char, u8>,
-    #[allow(dead_code)]
-    max_delta_time: u16,
     sound_hdrl: Option<AudioHandler>,
     display_string_cache: String,
     step_mode: bool,
@@ -40,7 +38,6 @@ impl Chip8TUI {
         let emulator_settings = EmulatorSettings::load(&config.emulator_settings_path);
 
         let frequency = emulator_settings.get_frequency();
-        let max_delta_time = emulator_settings.get_max_delta_time();
         let frequency_step = (frequency / 4).max(1);
 
         let mut keymap = HashMap::new();
@@ -52,14 +49,13 @@ impl Chip8TUI {
 
         let mut core = Chip8::new();
         core.set_frequency(frequency);
-        core.set_max_delta_time(max_delta_time);
+        core.set_max_delta_time(emulator_settings.get_max_delta_time());
 
         let mut tui = Self {
             core,
             rom: None,
             rom_name: String::new(),
             keymap,
-            max_delta_time,
             sound_hdrl,
             display_string_cache: String::with_capacity(64 * 32 + 31),
             step_mode: false,
