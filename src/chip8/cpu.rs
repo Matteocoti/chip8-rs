@@ -130,7 +130,7 @@ impl Chip8 {
             return false;
         }
 
-        self.state.memory.load_data(start, rom_slice, rom_size);
+        self.state.memory.load_data(start, rom_slice);
 
         // Set the pc to 0x200
         self.state.pc = start as u16;
@@ -574,7 +574,7 @@ impl Chip8 {
     fn load_fontset(&mut self) {
         self.state
             .memory
-            .load_data(0x000, &FONT_SET, FONT_SET.len());
+            .load_data(0x000, &FONT_SET);
     }
 
     pub fn reset(&mut self) {

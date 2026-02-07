@@ -37,8 +37,8 @@ impl<'de> Deserialize<'de> for Chip8Memory {
 }
 
 impl Chip8Memory {
-    pub fn load_data(&mut self, start: usize, data: &[u8], len: usize) {
-        self.0[start..(start + len)].copy_from_slice(data);
+    pub fn load_data(&mut self, start: usize, data: &[u8]) {
+        self.0[start..(start + data.len())].copy_from_slice(data);
     }
 
     pub fn read_byte(&self, address: usize) -> Result<u8, EmulationError> {
@@ -95,7 +95,7 @@ mod tests {
     #[test]
     fn load_data_and_read_back() {
         let mut mem = Chip8Memory::default();
-        mem.load_data(0x200, &[0xAB, 0xCD, 0xEF], 3);
+        mem.load_data(0x200, &[0xAB, 0xCD, 0xEF]);
         assert_eq!(mem.read_byte(0x200).unwrap(), 0xAB);
         assert_eq!(mem.read_byte(0x201).unwrap(), 0xCD);
         assert_eq!(mem.read_byte(0x202).unwrap(), 0xEF);
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn read_byte_at_last_valid_address() {
         let mut mem = Chip8Memory::default();
-        mem.load_data(4095, &[0xFF], 1);
+        mem.load_data(4095, &[0xFF]);
         assert_eq!(mem.read_byte(4095).unwrap(), 0xFF);
     }
 
@@ -116,14 +116,14 @@ mod tests {
     #[test]
     fn read_word_returns_big_endian() {
         let mut mem = Chip8Memory::default();
-        mem.load_data(0x200, &[0x12, 0x34], 2);
+        mem.load_data(0x200, &[0x12, 0x34]);
         assert_eq!(mem.read_word(0x200).unwrap(), 0x1234);
     }
 
     #[test]
     fn read_word_at_last_valid_address() {
         let mut mem = Chip8Memory::default();
-        mem.load_data(4094, &[0xAB, 0xCD], 2);
+        mem.load_data(4094, &[0xAB, 0xCD]);
         assert_eq!(mem.read_word(4094).unwrap(), 0xABCD);
     }
 
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn clear_zeroes_all_memory() {
         let mut mem = Chip8Memory::default();
-        mem.load_data(0, &[0xFF; 100], 100);
+        mem.load_data(0, &[0xFF; 100]);
         mem.clear();
         assert!(mem.0.iter().all(|&b| b == 0));
     }
