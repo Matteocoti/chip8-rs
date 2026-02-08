@@ -57,7 +57,7 @@ impl Chip8TUI {
             rom_name: String::new(),
             keymap,
             sound_hdrl,
-            display_string_cache: String::with_capacity(64 * 32 + 31),
+            display_string_cache: String::new(),
             step_mode: false,
             step: true,
             start_frequency: frequency,
