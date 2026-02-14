@@ -91,6 +91,9 @@ impl App {
                         let action = pane.on_exit();
                         self.handle_action(action);
                     }
+                    if self.stack.is_empty() {
+                        self.should_quit = true;
+                    }
                     needs_render = true;
                 }
                 crate::component::Transition::Push(mut component) => {
@@ -175,25 +178,32 @@ impl App {
     }
 
     fn update(&mut self) -> Action {
-        let component = self.stack.last_mut().unwrap();
-        component.update()
+        match self.stack.last_mut() {
+            Some(component) => component.update(),
+            None => Action::Nope,
+        }
     }
 
     fn handle_events(&mut self, event: KeyEvent) -> Action {
-        let component = self.stack.last_mut().unwrap();
-        component.handle_key_event(event)
+        match self.stack.last_mut() {
+            Some(component) => component.handle_key_event(event),
+            None => Action::Nope,
+        }
     }
 
     fn handle_key_release(&mut self, event: KeyEvent) -> Action {
-        let component = self.stack.last_mut().unwrap();
-        component.handle_key_release(event)
+        match self.stack.last_mut() {
+            Some(component) => component.handle_key_release(event),
+            None => Action::Nope,
+        }
     }
 
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
         let _ = terminal.draw(|f| {
-            let component = self.stack.last_mut().unwrap();
             let area = f.area();
-            component.render(f, area);
+            if let Some(component) = self.stack.last_mut() {
+                component.render(f, area);
+            }
 
             // Overlay the performance metrics if visible
             if self.metrics.is_visible() {
