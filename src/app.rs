@@ -1,6 +1,7 @@
 use crate::component::{Action, Component};
 use crate::config_manager::ConfigManager;
 use crate::menu::MainMenu;
+use crate::rom_history::RomHistory;
 use crate::performance_metrics::PerformanceMetrics;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -78,6 +79,11 @@ impl App {
         match action {
             Action::Quit => self.should_quit = true,
             Action::Render => needs_render = true,
+            Action::RegisterRom(path) => {
+                let mut history = RomHistory::load(&self.config.rom_history_path);
+                history.register_rom(path);
+                let _ = history.save_to_file(&self.config.rom_history_path);
+            }
             Action::Notify(msg) => {
                 let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S");
                 let _ = writeln!(self.log, "[{timestamp}] {msg}");

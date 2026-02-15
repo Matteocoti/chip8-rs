@@ -51,4 +51,6 @@ pub enum Action {
     Quit,
     /// Show a notification message in the overlay and write it to the log
     Notify(String),
+    /// Register a ROM in the history file
+    RegisterRom(std::path::PathBuf),
 }
