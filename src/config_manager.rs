@@ -48,3 +48,9 @@ impl ConfigManager {
         }
     }
 }
+
+impl Default for ConfigManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}

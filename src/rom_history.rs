@@ -1,5 +1,6 @@
 use crate::chip8_tui::Chip8TUI;
 use crate::component::{Action, Component, Transition};
+use crate::config_manager::ConfigManager;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -21,6 +22,8 @@ pub struct RomHistory {
     #[serde(skip)]
     state: ListState,
     file_path: PathBuf,
+    #[serde(skip)]
+    config: ConfigManager,
 }
 
 impl RomHistory {
@@ -98,15 +101,17 @@ impl RomHistory {
         fs::write(path, content)
     }
 
-    pub fn load(path: &PathBuf) -> Self {
+    pub fn load(path: &PathBuf, config: ConfigManager) -> Self {
         if let Ok(mut history) = Self::load_from_file(path) {
             history.state = ListState::default();
             history.state.select(Some(0));
             history.file_path = path.clone();
+            history.config = config;
             history
         } else {
             let mut history = Self::default();
             history.file_path = path.clone();
+            history.config = config;
             history
         }
     }
@@ -130,6 +135,7 @@ impl Component for RomHistory {
                         let rom_path = PathBuf::from(&rom.path).join(&rom.name);
                         return Action::Transition(Transition::Switch(Box::new(Chip8TUI::new(
                             &rom_path,
+                            self.config.clone(),
                         ))));
                     }
                 }
@@ -231,7 +237,7 @@ mod tests {
         history.register_rom(rom("/roms/tetris.ch8"));
         history.save_to_file(&path).unwrap();
 
-        let loaded = RomHistory::load(&path);
+        let loaded = RomHistory::load(&path, ConfigManager::default());
         assert_eq!(loaded.roms.len(), 2);
         assert_eq!(loaded.roms[0].name, "pong.ch8");
         assert_eq!(loaded.roms[1].name, "tetris.ch8");
@@ -241,7 +247,7 @@ mod tests {
     #[test]
     fn load_from_nonexistent_file_returns_default() {
         let path = PathBuf::from("/nonexistent/path/chip8_history.toml");
-        let history = RomHistory::load(&path);
+        let history = RomHistory::load(&path, ConfigManager::default());
         assert_eq!(history.roms.len(), 0);
     }
 }

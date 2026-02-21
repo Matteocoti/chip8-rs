@@ -31,8 +31,7 @@ pub struct Chip8TUI {
 }
 
 impl Chip8TUI {
-    pub fn new(rom: &PathBuf) -> Self {
-        let config = ConfigManager::new();
+    pub fn new(rom: &PathBuf, config: ConfigManager) -> Self {
         let key_bindings = KeyBindings::load(&config.key_bindings_path);
         let emulator_settings = EmulatorSettings::load(&config.emulator_settings_path);
 

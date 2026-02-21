@@ -16,6 +16,7 @@ use ratatui::{
 use crate::{
     chip8_tui::Chip8TUI,
     component::{Action, Component, Transition},
+    config_manager::ConfigManager,
 };
 
 pub struct Entry {
@@ -31,6 +32,7 @@ pub struct FileBrowser {
     show_hidden_files: bool,
     filter: String,
     editing: bool,
+    config: ConfigManager,
 }
 
 fn is_path_hidden(path: &Path) -> io::Result<bool> {
@@ -63,7 +65,7 @@ fn dir_has_entry(path: &Path) -> io::Result<bool> {
 }
 
 impl FileBrowser {
-    pub fn new() -> Self {
+    pub fn new(config: ConfigManager) -> Self {
         // The finder starting path would be the home directory of the file
         // system
         let mut path = PathBuf::from(".");
@@ -79,6 +81,7 @@ impl FileBrowser {
             show_hidden_files: false,
             filter: String::new(),
             editing: false,
+            config,
         };
 
         let _ = browser.update_data();
@@ -155,7 +158,7 @@ impl FileBrowser {
                     let _ = self.update_data();
                     Action::Render
                 } else {
-                    Action::Transition(Transition::Switch(Box::new(Chip8TUI::new(&entry.path))))
+                    Action::Transition(Transition::Switch(Box::new(Chip8TUI::new(&entry.path, self.config.clone()))))
                 }
             } else {
                 Action::Nope

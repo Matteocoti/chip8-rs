@@ -110,8 +110,8 @@ impl Component for MainMenu {
             KeyCode::Enter => match self.state.selected().unwrap() {
                 0 => {
                     let new_component = SplitViewComponent::builder()
-                        .pane(Box::new(FileBrowser::new()))
-                        .pane(Box::new(RomHistory::load(&self.config.rom_history_path)))
+                        .pane(Box::new(FileBrowser::new(self.config.clone())))
+                        .pane(Box::new(RomHistory::load(&self.config.rom_history_path, self.config.clone())))
                         .direction(Direction::Horizontal)
                         .build();
 

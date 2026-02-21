@@ -80,7 +80,7 @@ impl App {
             Action::Quit => self.should_quit = true,
             Action::Render => needs_render = true,
             Action::RegisterRom(path) => {
-                let mut history = RomHistory::load(&self.config.rom_history_path);
+                let mut history = RomHistory::load(&self.config.rom_history_path, self.config.clone());
                 history.register_rom(path);
                 let _ = history.save_to_file(&self.config.rom_history_path);
             }
