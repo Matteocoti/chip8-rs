@@ -63,8 +63,14 @@ impl RomHistory {
 
     #[allow(dead_code)]
     pub fn register_rom(&mut self, rom_path: PathBuf) {
-        let name = rom_path.file_name().unwrap().to_string_lossy().into_owned();
-        let path = rom_path.parent().unwrap().to_string_lossy().into_owned();
+        let name = match rom_path.file_name() {
+            Some(n) => n.to_string_lossy().into_owned(),
+            None => return,
+        };
+        let path = rom_path
+            .parent()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
 
         let rom = RomFileData { path, name };
 
