@@ -78,17 +78,21 @@ impl Component for SplitViewComponent {
 
     fn on_entry(&mut self) -> Action {
         for pane in self.panes.iter_mut() {
-            pane.on_entry();
+            let action = pane.on_entry();
+            if !matches!(action, Action::Nope) {
+                return action;
+            }
         }
-
         Action::Nope
     }
 
     fn on_exit(&mut self) -> Action {
         for pane in self.panes.iter_mut() {
-            pane.on_exit();
+            let action = pane.on_exit();
+            if !matches!(action, Action::Nope) {
+                return action;
+            }
         }
-
         Action::Nope
     }
 }
