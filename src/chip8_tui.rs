@@ -94,7 +94,10 @@ impl Chip8TUI {
             ));
         }
 
-        self.rom_name = rom_path.file_name().unwrap().to_string_lossy().into_owned();
+        self.rom_name = rom_path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| rom_path.to_string_lossy().into_owned());
         self.rom = Some(rom_path.clone());
         Ok(())
     }
