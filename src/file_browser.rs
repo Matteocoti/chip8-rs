@@ -130,7 +130,7 @@ impl FileBrowser {
             if let Some(os_name) = path.file_name() {
                 let name = os_name.to_string_lossy().into_owned();
 
-                if !self.editing || !self.filter.is_empty() && name.starts_with(&self.filter) {
+                if !self.editing || (!self.filter.is_empty() && name.starts_with(&self.filter)) {
                     let is_dir = path.is_dir();
                     if is_dir {
                         if let Ok(entries) = dir_has_entry(&path) {
