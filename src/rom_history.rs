@@ -256,4 +256,23 @@ mod tests {
         let history = RomHistory::load(&path, ConfigManager::default());
         assert_eq!(history.roms.len(), 0);
     }
+
+    #[test]
+    fn load_from_corrupt_toml_returns_default() {
+        let path = std::env::temp_dir().join("chip8_test_corrupt_history.toml");
+        std::fs::write(&path, b"this is not valid toml [[[").unwrap();
+        let history = RomHistory::load(&path, ConfigManager::default());
+        assert_eq!(history.roms.len(), 0);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn register_rom_with_rootlike_path_does_not_panic() {
+        let mut history = RomHistory::default();
+        // A path with no parent (e.g. just a filename with no directory)
+        // should be handled gracefully, not panic.
+        history.register_rom(PathBuf::from("pong.ch8"));
+        assert_eq!(history.roms.len(), 1);
+        assert_eq!(history.roms[0].name, "pong.ch8");
+    }
 }

@@ -1319,4 +1319,82 @@ mod tests {
         assert_eq!(cpu.state.v[0], 0x42);
         assert_eq!(cpu.state.v[1], 0xFF); // unchanged
     }
+
+    // ── load_rom: size boundary ───────────────────────────────────────
+
+    #[test]
+    fn load_rom_at_max_size_succeeds() {
+        let mut cpu = Chip8::new();
+        let max_size = 4096 - 0x200; // 3840 bytes
+        let rom = vec![0u8; max_size];
+        assert!(cpu.load_rom(rom));
+    }
+
+    #[test]
+    fn load_rom_exceeding_max_size_fails() {
+        let mut cpu = Chip8::new();
+        let too_large = 4096 - 0x200 + 1; // 3841 bytes
+        let rom = vec![0u8; too_large];
+        assert!(!cpu.load_rom(rom));
+    }
+
+    // ── Fx1E: AddI wrapping ───────────────────────────────────────────
+
+    #[test]
+    fn add_i_wraps_on_u16_overflow() {
+        let mut cpu = chip8_with_rom(&[0xF01E]); // ADD I, V0
+        cpu.state.i = 0xFFFF;
+        cpu.state.v[0] = 0x01;
+        cpu.emulate_cycle().unwrap();
+        assert_eq!(cpu.state.i, 0x0000);
+    }
+
+    // ── Dxyn: Draw vertical wrapping ─────────────────────────────────
+
+    #[test]
+    fn draw_sprite_wraps_at_vertical_boundary() {
+        // Draw a 2-row all-on sprite at x=0, y=31 (last row).
+        // Row 0 of sprite → display row 31, row 1 → display row 0 (wrapped).
+        let mut cpu = chip8_with_rom(&[
+            0x6000, // LD V0, 0  (x = 0)
+            0x611F, // LD V1, 31 (y = 31)
+            0xA300, // LD I, 0x300
+            0xD012, // DRW V0, V1, 2
+        ]);
+        // Place a 2-row sprite (both rows = 0xFF = all 8 pixels on) at 0x300
+        cpu.state.memory.set_byte(0x300, 0xFF).unwrap();
+        cpu.state.memory.set_byte(0x301, 0xFF).unwrap();
+        for _ in 0..4 {
+            cpu.emulate_cycle().unwrap();
+        }
+        let fb = cpu.state.display.get_frame_buffer();
+        // Row 31, cols 0-7 should be on
+        for col in 0..8 {
+            assert!(fb[31 * 64 + col], "row 31, col {col} should be set");
+        }
+        // Row 0 (wrapped), cols 0-7 should be on
+        for col in 0..8 {
+            assert!(fb[col], "row 0 (wrapped), col {col} should be set");
+        }
+    }
+
+    // ── Fx18: SetST sound events ──────────────────────────────────────
+
+    #[test]
+    fn set_st_with_nonzero_value_emits_sound_started() {
+        let mut cpu = chip8_with_rom(&[0xF018]); // LD ST, V0
+        cpu.state.v[0] = 5;
+        // sound_tmr starts at 0, so transition 0→5 should fire SoundStarted
+        let evt = cpu.emulate_cycle().unwrap();
+        assert_eq!(evt, Some(EmulationEvent::SoundStarted));
+    }
+
+    #[test]
+    fn set_st_while_already_playing_does_not_emit_sound_started() {
+        let mut cpu = chip8_with_rom(&[0xF018]); // LD ST, V0
+        cpu.state.sound_tmr = 3; // already playing
+        cpu.state.v[0] = 10;
+        let evt = cpu.emulate_cycle().unwrap();
+        assert_ne!(evt, Some(EmulationEvent::SoundStarted));
+    }
 }
