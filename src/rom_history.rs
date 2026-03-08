@@ -80,7 +80,7 @@ impl RomHistory {
     }
 
     #[allow(dead_code)]
-    pub fn render_footer(&self) -> Line {
+    pub fn render_footer(&self) -> Line<'_> {
         let key_style = Style::default()
             .fg(Color::Cyan)
             .add_modifier(ratatui::style::Modifier::BOLD);
@@ -136,15 +136,15 @@ impl Component for RomHistory {
                 Action::Render
             }
             KeyCode::Enter => {
-                if let Some(selected_index) = self.state.selected() {
-                    if selected_index < self.roms.len() {
-                        let rom = &self.roms[selected_index];
-                        let rom_path = PathBuf::from(&rom.path).join(&rom.name);
-                        return Action::Transition(Transition::Switch(Box::new(Chip8TUI::new(
-                            &rom_path,
-                            self.config.clone(),
-                        ))));
-                    }
+                if let Some(selected_index) = self.state.selected()
+                    && selected_index < self.roms.len()
+                {
+                    let rom = &self.roms[selected_index];
+                    let rom_path = PathBuf::from(&rom.path).join(&rom.name);
+                    return Action::Transition(Transition::Switch(Box::new(Chip8TUI::new(
+                        &rom_path,
+                        self.config.clone(),
+                    ))));
                 }
                 Action::Nope
             }

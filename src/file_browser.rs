@@ -47,10 +47,10 @@ fn is_path_hidden(path: &Path) -> io::Result<bool> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        if let Some(file_name_osstr) = path.file_name() {
-            if let Some(file_name) = file_name_osstr.to_str() {
-                return Ok(file_name.starts_with('.'));
-            }
+        if let Some(file_name_osstr) = path.file_name()
+            && let Some(file_name) = file_name_osstr.to_str()
+        {
+            return Ok(file_name.starts_with('.'));
         }
         Ok(false)
     }
@@ -122,10 +122,11 @@ impl FileBrowser {
         for entry in fs::read_dir(&self.path)? {
             let entry = entry?;
             let path = entry.path();
-            if let Ok(path_hidden) = is_path_hidden(&path) {
-                if !self.show_hidden_files && path_hidden {
-                    continue;
-                }
+            if let Ok(path_hidden) = is_path_hidden(&path)
+                && !self.show_hidden_files
+                && path_hidden
+            {
+                continue;
             }
             if let Some(os_name) = path.file_name() {
                 let name = os_name.to_string_lossy().into_owned();
@@ -133,10 +134,10 @@ impl FileBrowser {
                 if !self.editing || (!self.filter.is_empty() && name.starts_with(&self.filter)) {
                     let is_dir = path.is_dir();
                     if is_dir {
-                        if let Ok(entries) = dir_has_entry(&path) {
-                            if entries {
-                                self.items.push(Entry { name, path, is_dir });
-                            }
+                        if let Ok(entries) = dir_has_entry(&path)
+                            && entries
+                        {
+                            self.items.push(Entry { name, path, is_dir });
                         }
                     } else {
                         self.items.push(Entry { name, path, is_dir })
@@ -191,7 +192,7 @@ impl FileBrowser {
     }
 
     #[allow(dead_code)]
-    pub fn render_footer(&self) -> Line {
+    pub fn render_footer(&self) -> Line<'_> {
         let key_style = Style::default()
             .fg(Color::Cyan)
             .add_modifier(ratatui::style::Modifier::BOLD);

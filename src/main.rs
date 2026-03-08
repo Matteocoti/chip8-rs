@@ -1,7 +1,6 @@
 mod actions;
 mod app;
 mod audio;
-mod browser;
 mod chip8;
 mod chip8_tui;
 mod component;

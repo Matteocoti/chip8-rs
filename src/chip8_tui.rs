@@ -140,14 +140,12 @@ impl Chip8TUI {
 
         for entry in entries.flatten() {
             let path = entry.path();
-            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
-                if filename.ends_with(".sav") {
-                    if let Ok(metadata) = fs::metadata(&path) {
-                        if let Ok(modified) = metadata.modified() {
-                            save_files.push((path, modified));
-                        }
-                    }
-                }
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str())
+                && filename.ends_with(".sav")
+                && let Ok(metadata) = fs::metadata(&path)
+                && let Ok(modified) = metadata.modified()
+            {
+                save_files.push((path, modified));
             }
         }
 
@@ -242,10 +240,10 @@ impl Component for Chip8TUI {
     }
 
     fn handle_key_release(&mut self, event: KeyEvent) -> Action {
-        if let KeyCode::Char(key) = event.code {
-            if let Some(chip8_key) = self.keymap.get(&key) {
-                self.held_keys.remove(chip8_key);
-            }
+        if let KeyCode::Char(key) = event.code
+            && let Some(chip8_key) = self.keymap.get(&key)
+        {
+            self.held_keys.remove(chip8_key);
         }
         Action::Nope
     }

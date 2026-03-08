@@ -8,7 +8,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState},
 };
 use serde::{Deserialize, Serialize};
-use typetag::serde;
 
 use crate::{
     component::{Action, Component},
@@ -88,18 +87,18 @@ impl EmulatorSettings {
     }
 
     fn decrement_current_value(&mut self) {
-        if let Some(i) = self.state.selected() {
-            if let Some(item) = self.items.get_mut(i) {
-                item.decrement();
-            }
+        if let Some(i) = self.state.selected()
+            && let Some(item) = self.items.get_mut(i)
+        {
+            item.decrement();
         }
     }
 
     fn increment_current_value(&mut self) {
-        if let Some(i) = self.state.selected() {
-            if let Some(item) = self.items.get_mut(i) {
-                item.increment();
-            }
+        if let Some(i) = self.state.selected()
+            && let Some(item) = self.items.get_mut(i)
+        {
+            item.increment();
         }
     }
 

@@ -171,10 +171,10 @@ impl App {
             }
 
             // Expire notification after 5 seconds
-            if let Some((_, when)) = &self.notification {
-                if when.elapsed() >= NOTIFICATION_DURATION {
-                    self.notification = None;
-                }
+            if let Some((_, when)) = &self.notification
+                && when.elapsed() >= NOTIFICATION_DURATION
+            {
+                self.notification = None;
             }
 
             let update_action = self.update();
@@ -228,19 +228,19 @@ impl App {
             }
 
             // Overlay the notification if active and not expired
-            if let Some((ref msg, when)) = self.notification {
-                if when.elapsed() < NOTIFICATION_DURATION {
-                    let notif_area = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
-                        .split(area)[1];
-                    f.render_widget(Clear, notif_area);
-                    f.render_widget(
-                        Paragraph::new(msg.as_str())
-                            .style(Style::default().bg(Color::Yellow).fg(Color::Black)),
-                        notif_area,
-                    );
-                }
+            if let Some((ref msg, when)) = self.notification
+                && when.elapsed() < NOTIFICATION_DURATION
+            {
+                let notif_area = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
+                    .split(area)[1];
+                f.render_widget(Clear, notif_area);
+                f.render_widget(
+                    Paragraph::new(msg.as_str())
+                        .style(Style::default().bg(Color::Yellow).fg(Color::Black)),
+                    notif_area,
+                );
             }
         });
     }

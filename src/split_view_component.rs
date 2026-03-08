@@ -63,9 +63,8 @@ impl Component for SplitViewComponent {
             return;
         }
         // Creates a layout based on the direction and the number of panes
-        let constraints = std::iter::repeat(Constraint::Fill(1))
-            .take(self.panes.len())
-            .collect::<Vec<_>>();
+        let constraints =
+            std::iter::repeat_n(Constraint::Fill(1), self.panes.len()).collect::<Vec<_>>();
         let layout = Layout::default()
             .direction(self.direction)
             .constraints(constraints)

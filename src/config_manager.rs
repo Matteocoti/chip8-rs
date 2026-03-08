@@ -33,12 +33,12 @@ impl ConfigManager {
     fn get_or_create_base_path() -> PathBuf {
         if let Some(home_dir) = home::home_dir() {
             let config_path = home_dir.join(".chip8_tui");
-            if !config_path.exists() {
-                if let Err(e) = fs::create_dir_all(&config_path) {
-                    eprintln!("Failed to create config directory: {}", e);
-                    // Fallback to current directory
-                    return std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-                }
+            if !config_path.exists()
+                && let Err(e) = fs::create_dir_all(&config_path)
+            {
+                eprintln!("Failed to create config directory: {}", e);
+                // Fallback to current directory
+                return std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             }
             config_path
         } else {
