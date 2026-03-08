@@ -1,5 +1,7 @@
 # chip8-rs
 
+[![CI](https://github.com/Matteocoti/chip8-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/Matteocoti/chip8-rs/actions/workflows/rust.yml)
+
 A CHIP-8 emulator written in Rust with a terminal UI built using [ratatui](https://github.com/ratatui/ratatui).
 
 ## Features
