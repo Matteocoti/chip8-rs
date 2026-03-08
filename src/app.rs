@@ -1,20 +1,26 @@
 use crate::component::{Action, Component};
 use crate::config_manager::ConfigManager;
 use crate::menu::MainMenu;
-use crate::rom_history::RomHistory;
 use crate::performance_metrics::PerformanceMetrics;
+use crate::rom_history::RomHistory;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::{
     ExecutableCommand,
-    event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags, poll, read},
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode, supports_keyboard_enhancement},
+    event::{
+        Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, KeyboardEnhancementFlags,
+        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags, poll, read,
+    },
+    terminal::{
+        EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+        supports_keyboard_enhancement,
+    },
 };
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Clear, Paragraph};
 use std::fs::{File, OpenOptions};
-use std::io::{stdout, Write};
+use std::io::{Write, stdout};
 use std::time::{Duration, Instant};
 
 const NOTIFICATION_DURATION: Duration = Duration::from_secs(5);
@@ -80,7 +86,8 @@ impl App {
             Action::Quit => self.should_quit = true,
             Action::Render => needs_render = true,
             Action::RegisterRom(path) => {
-                let mut history = RomHistory::load(&self.config.rom_history_path, self.config.clone());
+                let mut history =
+                    RomHistory::load(&self.config.rom_history_path, self.config.clone());
                 history.register_rom(path);
                 let _ = history.save_to_file(&self.config.rom_history_path);
             }
@@ -215,13 +222,7 @@ impl App {
             if self.metrics.is_visible() {
                 let metrics_area = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints(
-                        [
-                            Constraint::Min(0),
-                            Constraint::Length(1),
-                        ]
-                        .as_ref(),
-                    )
+                    .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
                     .split(f.area())[1];
                 self.metrics.render(f, metrics_area);
             }
@@ -231,13 +232,7 @@ impl App {
                 if when.elapsed() < NOTIFICATION_DURATION {
                     let notif_area = Layout::default()
                         .direction(Direction::Vertical)
-                        .constraints(
-                            [
-                                Constraint::Min(0),
-                                Constraint::Length(1),
-                            ]
-                            .as_ref(),
-                        )
+                        .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
                         .split(area)[1];
                     f.render_widget(Clear, notif_area);
                     f.render_widget(

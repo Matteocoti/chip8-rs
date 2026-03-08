@@ -158,7 +158,10 @@ impl FileBrowser {
                     let _ = self.update_data();
                     Action::Render
                 } else {
-                    Action::Transition(Transition::Switch(Box::new(Chip8TUI::new(&entry.path, self.config.clone()))))
+                    Action::Transition(Transition::Switch(Box::new(Chip8TUI::new(
+                        &entry.path,
+                        self.config.clone(),
+                    ))))
                 }
             } else {
                 Action::Nope

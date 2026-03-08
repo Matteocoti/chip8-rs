@@ -1,5 +1,5 @@
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Rect;
 use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
@@ -111,7 +111,10 @@ impl Component for MainMenu {
                 0 => {
                     let new_component = SplitViewComponent::builder()
                         .pane(Box::new(FileBrowser::new(self.config.clone())))
-                        .pane(Box::new(RomHistory::load(&self.config.rom_history_path, self.config.clone())))
+                        .pane(Box::new(RomHistory::load(
+                            &self.config.rom_history_path,
+                            self.config.clone(),
+                        )))
                         .direction(Direction::Horizontal)
                         .build();
 

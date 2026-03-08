@@ -5,14 +5,17 @@ use crate::config_file::get_rom_saved_data_path;
 use crate::config_manager::ConfigManager;
 use crate::settings::{EmulatorSettings, KeyBindings};
 use chrono::Utc;
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use std::fs;
-use std::{collections::{HashMap, HashSet}, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
 pub struct Chip8TUI {
     core: Chip8,
@@ -101,7 +104,6 @@ impl Chip8TUI {
         self.rom = Some(rom_path.clone());
         Ok(())
     }
-
 
     fn save_state(&mut self, file_name: &str) -> Action {
         let name = self.rom_name.as_ref();
@@ -277,7 +279,10 @@ impl Component for Chip8TUI {
                 }
             }
         }
-        f.render_widget(Paragraph::new(self.display_string_cache.as_str()), game_area);
+        f.render_widget(
+            Paragraph::new(self.display_string_cache.as_str()),
+            game_area,
+        );
 
         // --- Debugger panel ---
         let dbg = self.core.get_debug_info();
@@ -308,7 +313,10 @@ impl Component for Chip8TUI {
             ]),
         ];
         if dbg.waiting_for_key {
-            lines.push(Line::from(Span::styled("WAIT KEY", Style::default().fg(Color::Red))));
+            lines.push(Line::from(Span::styled(
+                "WAIT KEY",
+                Style::default().fg(Color::Red),
+            )));
         }
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled("Registers", key_style)));

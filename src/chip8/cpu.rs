@@ -404,9 +404,10 @@ impl Chip8 {
                 self.state
                     .memory
                     .set_byte(self.state.i as usize, self.state.v[x] / 100)?;
-                self.state
-                    .memory
-                    .set_byte(self.state.i.wrapping_add(1) as usize, (self.state.v[x] % 100) / 10)?;
+                self.state.memory.set_byte(
+                    self.state.i.wrapping_add(1) as usize,
+                    (self.state.v[x] % 100) / 10,
+                )?;
                 self.state
                     .memory
                     .set_byte(self.state.i.wrapping_add(2) as usize, self.state.v[x] % 10)?;
@@ -572,9 +573,7 @@ impl Chip8 {
     }
 
     fn load_fontset(&mut self) {
-        self.state
-            .memory
-            .load_data(0x000, &FONT_SET);
+        self.state.memory.load_data(0x000, &FONT_SET);
     }
 
     pub fn reset(&mut self) {
