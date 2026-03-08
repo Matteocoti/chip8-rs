@@ -9,9 +9,7 @@ pub struct Chip8Display([bool; DISPLAY_COLS * DISPLAY_ROWS]);
 
 impl Default for Chip8Display {
     fn default() -> Self {
-        Self {
-            0: [false; DISPLAY_COLS * DISPLAY_ROWS],
-        }
+        Self([false; DISPLAY_COLS * DISPLAY_ROWS])
     }
 }
 
@@ -156,12 +154,20 @@ mod tests {
 
     #[test]
     fn set_pixel_row_out_of_bounds_returns_error() {
-        assert!(Chip8Display::default().set_pixel_value(32, 0, true).is_err());
+        assert!(
+            Chip8Display::default()
+                .set_pixel_value(32, 0, true)
+                .is_err()
+        );
     }
 
     #[test]
     fn set_pixel_col_out_of_bounds_returns_error() {
-        assert!(Chip8Display::default().set_pixel_value(0, 64, true).is_err());
+        assert!(
+            Chip8Display::default()
+                .set_pixel_value(0, 64, true)
+                .is_err()
+        );
     }
 
     #[test]

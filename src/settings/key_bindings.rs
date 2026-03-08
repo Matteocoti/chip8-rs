@@ -59,8 +59,8 @@ impl KeyBindings {
 
     fn load_from_file(path: &PathBuf) -> io::Result<Self> {
         let content = fs::read_to_string(path)?;
-        let bindings: Self = toml::from_str(&content)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let bindings: Self =
+            toml::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(bindings)
     }
 
@@ -78,9 +78,10 @@ impl KeyBindings {
             data.path = path.clone();
             data
         } else {
-            let mut default = Self::default();
-            default.path = path.clone();
-            default
+            Self {
+                path: path.clone(),
+                ..Self::default()
+            }
         }
     }
 }

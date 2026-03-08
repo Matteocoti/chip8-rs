@@ -8,7 +8,7 @@ pub struct Chip8Memory([u8; 4096]);
 
 impl Default for Chip8Memory {
     fn default() -> Self {
-        Self { 0: [0; 4096] }
+        Self([0; 4096])
     }
 }
 

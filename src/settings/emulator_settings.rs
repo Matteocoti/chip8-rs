@@ -34,8 +34,8 @@ impl EmulatorSettings {
     // Load the settings from a TOML file.
     fn load_from_file(path: &PathBuf) -> io::Result<Self> {
         let content = fs::read_to_string(path)?;
-        let settings: Self = toml::from_str(&content)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let settings: Self =
+            toml::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(settings)
     }
 
@@ -46,9 +46,10 @@ impl EmulatorSettings {
             data.path = path.clone();
             data
         } else {
-            let mut data = Self::default();
-            data.path = path.clone();
-            data
+            Self {
+                path: path.clone(),
+                ..Self::default()
+            }
         }
     }
 
@@ -104,7 +105,7 @@ impl EmulatorSettings {
 
     pub fn get_frequency(&self) -> u16 {
         self.items
-            .get(0)
+            .first()
             .map(|item| item.get_value().max(1) as u16)
             .unwrap_or(500)
     }

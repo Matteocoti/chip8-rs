@@ -13,7 +13,7 @@ impl AudioHandler {
     pub fn new() -> Option<Self> {
         let _stream =
             OutputStreamBuilder::open_default_stream().expect("open default audio stream");
-        let sink = Sink::connect_new(&_stream.mixer());
+        let sink = Sink::connect_new(_stream.mixer());
 
         let source = SineWave::new(440.0)
             .take_duration(Duration::from_secs_f32(10.0))

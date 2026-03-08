@@ -1,15 +1,9 @@
 // Input/keyboard handling for CHIP-8 emulator
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Chip8Keyboard {
     keys: [bool; 16],
-}
-
-impl Default for Chip8Keyboard {
-    fn default() -> Self {
-        Self { keys: [false; 16] }
-    }
 }
 
 impl Chip8Keyboard {

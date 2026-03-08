@@ -1,8 +1,8 @@
 use crate::chip8_tui::Chip8TUI;
 use crate::component::{Action, Component, Transition};
 use crate::config_manager::ConfigManager;
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
@@ -97,8 +97,8 @@ impl RomHistory {
 
     fn load_from_file(path: &PathBuf) -> io::Result<Self> {
         let content = fs::read_to_string(path)?;
-        let history = toml::from_str(&content)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let history =
+            toml::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(history)
     }
 
@@ -115,10 +115,11 @@ impl RomHistory {
             history.config = config;
             history
         } else {
-            let mut history = Self::default();
-            history.file_path = path.clone();
-            history.config = config;
-            history
+            Self {
+                file_path: path.clone(),
+                config,
+                ..Self::default()
+            }
         }
     }
 }
