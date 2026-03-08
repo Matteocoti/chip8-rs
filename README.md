@@ -34,11 +34,19 @@ cargo build --release
 cargo run --release
 ```
 
-The main menu lets you browse for a ROM, or re-open a recently played one.
-
-You can also pass a ROM directly (if you wire up a CLI arg — currently the entry point opens the menu by default).
+The main menu lets you browse for a ROM or re-open a recently played one.
 
 ## Controls
+
+### Navigation
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` (or `w`/`s`, `k`/`j`) | Navigate menus |
+| `Enter` | Select / open |
+| `Esc` | Go back |
+| `Tab` | Switch focus in split-pane views |
+| `Ctrl+C` | Quit |
 
 ### In-game
 
@@ -54,6 +62,15 @@ You can also pass a ROM directly (if you wire up a CLI arg — currently the ent
 | `Enter` | Toggle step mode |
 | `n` | Step one cycle (while in step mode) |
 | `F12` | Toggle performance metrics overlay |
+
+### ROM file browser
+
+| Key | Action |
+|-----|--------|
+| `→` / `Enter` | Open folder or load ROM |
+| `←` | Go up one directory |
+| `/` | Start filtering by name |
+| `Ctrl+H` | Toggle hidden files |
 
 ### CHIP-8 Keypad (default mapping)
 
@@ -83,49 +100,14 @@ Settings are stored in `~/.chip8_tui/`:
 
 ### Emulator Settings
 
-- **Frequency** — CPU cycles per second. Default: 1000 Hz. Higher = faster emulation.
+- **Frequency** — CPU cycles per second. Default: 500 Hz. Higher = faster emulation.
 - **Max Delta Time** — caps the time delta per tick to avoid spiral-of-death on slow frames. Default: 30 ms.
-
-## Project Structure
-
-```
-src/
-  main.rs                  — entry point
-  app.rs                   — main loop, component stack, event dispatch
-  chip8_tui.rs             — TUI wrapper around the CHIP-8 core
-  component.rs             — Component trait (handle_key_event, render, update, on_entry, on_exit)
-  menu.rs                  — main menu
-  file_browser.rs          — ROM file browser
-  rom_history.rs           — recently opened ROMs
-  audio.rs                 — rodio sine-wave audio handler
-  performance_metrics.rs   — FPS / frame-time overlay
-  config_manager.rs        — config directory paths
-  config_file.rs           — config file helpers
-  browser.rs               — generic list browser component
-  split_view_component.rs  — split-pane layout helper
-  constants.rs             — shared constants
-  actions.rs               — action/event types (if separate from component.rs)
-  settings/
-    mod.rs
-    emulator_settings.rs   — frequency + delta time settings
-    key_bindings.rs        — key binding settings
-    numeric_setting.rs     — generic numeric setting widget
-    setting_item.rs        — SettingItem trait (typetag serde)
-  chip8/
-    mod.rs
-    cpu.rs                 — Chip8 struct, tick loop, state save/load
-    opcodes.rs             — all 35 CHIP-8 opcodes
-    display.rs             — 64x32 frame buffer
-    memory.rs              — 4 KB memory + font data
-    input.rs               — 16-key keyboard state
-    error.rs               — EmulationError type
-```
 
 ## Architecture
 
 The UI is built around a **component stack**. Each screen (menu, file browser, emulator) implements the `Component` trait. The active component is the top of the stack. Navigation uses `Action::Transition(Pop | Push | Switch)`.
 
-The CHIP-8 core (`Chip8`) is timing-aware: `tick()` runs however many cycles fit in the elapsed wall-clock time, using a **burst mode** that keeps running extra cycles when a draw sequence is in progress. This prevents graphical artifacts (flickering / apparent freeze) when a ROM erases and redraws sprites across what would otherwise be multiple rendered frames.
+The emulator core (`Chip8`) is timing-aware: `tick()` determines how many cycles to run based on elapsed wall-clock time and the configured CPU frequency.
 
 ## Running Tests
 
@@ -133,7 +115,7 @@ The CHIP-8 core (`Chip8`) is timing-aware: `tick()` runs however many cycles fit
 cargo test
 ```
 
-Tests cover all CHIP-8 opcodes, display bounds checking, memory read/write, input state, emulator settings, and ROM history.
+150 tests cover all CHIP-8 opcodes, display bounds, memory read/write, input state, emulator settings, ROM history, save/load, and edge cases (overflow, wrapping, boundary conditions).
 
 ## License
 
